@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:static\" \"npm run dev:staking\"",
+    "dev": "next dev",
     "dev:static": "npx http-server . -p 3000 -c-1",
     "dev:staking": "cd solana-staking-ui && npm run dev",
-    "install:all": "npm install && cd solana-staking-ui && npm install"
+    "install:all": "npm install && cd solana-staking-ui && npm install",
+    "build": "next build && next-on-pages --experimental-minify && wrangler pages deploy .vercel/output --project-name=ily-website"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "http-server": "^14.1.1"
+  
   }
+
 }
