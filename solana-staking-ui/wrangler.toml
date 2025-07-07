@@ -1,10 +1,6 @@
-name = "ily-website-staking-pages"  # ← プロジェクト名（URLにも反映される）
-type = "javascript"                 # or "webpack", "module", "rust" など
-account_id = "51a2251a9817e2e213c57cb336a1a3c4" # ← CloudflareのアカウントIDを記入
-compatibility_date = "2025-07-08"   # ← 今日の日付でOK
+name = "ily-website-staking-worker"
+type = "javascript"
+account_id = "51a2251a9817e2e213c57cb336a1a3c4"
+compatibility_date = "2025-07-08"
 
-[build]
-command = "npm run build"
-upload.format = "directory"
-upload.dir = "dist"  # ← ビルド成果物のディレクトリ（Next.jsなら .vercel/output/static などに変更）
-
+site = { bucket = ".vercel/output/static" }
