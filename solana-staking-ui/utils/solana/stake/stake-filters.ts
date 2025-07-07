@@ -35,7 +35,7 @@ export const stakeAccountsFilter = ({
       memcmp: {
         offset: BigInt(STAKE_PROGRAM.STAKE_ACCOUNT_FILTERS.voteOffset),
         encoding: "base58" as const,
-        bytes: vote as Base58EncodedBytes
+        bytes: vote as unknown as Base58EncodedBytes
       }
     });
   }
