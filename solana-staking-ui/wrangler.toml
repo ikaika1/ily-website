@@ -1,3 +1,10 @@
-name = "ily-website-staking-pages"
-compatibility_date = "2026-07-08"  
-pages_build_output_dir = "./.vercel/output"
+name = "ily-website-staking-pages"  # ← プロジェクト名（URLにも反映される）
+type = "javascript"                 # or "webpack", "module", "rust" など
+account_id = "51a2251a9817e2e213c57cb336a1a3c4" # ← CloudflareのアカウントIDを記入
+compatibility_date = "2025-07-08"   # ← 今日の日付でOK
+
+[build]
+command = "npm run build"
+upload.format = "directory"
+upload.dir = "dist"  # ← ビルド成果物のディレクトリ（Next.jsなら .vercel/output/static などに変更）
+
