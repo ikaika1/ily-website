@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Space+Grotesk%3Awght%40400%3B500%3B700"
+    />
+
+    <title>Gallery - ILY♡Validator</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#231023] dark group/design-root overflow-x-hidden" style='font-family: "Space Grotesk", "Noto Sans", sans-serif;'>
+      <!-- Navigation Header -->
+      <div class="absolute top-0 right-0 z-50 p-4">
+        <button id="hamburgerBtn" class="flex flex-col justify-center items-center w-8 h-8 space-y-1 bg-[#f43df4] rounded p-1 hover:bg-[#e235e2] transition-colors">
+          <div class="w-5 h-0.5 bg-white transition-all duration-300 hamburger-line"></div>
+          <div class="w-5 h-0.5 bg-white transition-all duration-300 hamburger-line"></div>
+          <div class="w-5 h-0.5 bg-white transition-all duration-300 hamburger-line"></div>
+        </button>
+      </div>
+      
+      <!-- Navigation Menu -->
+      <div id="navMenu" class="fixed top-0 right-0 h-full w-64 bg-[#231023] border-l border-[#492249] transform translate-x-full transition-transform duration-300 ease-in-out z-40">
+        <div class="pt-16 px-6">
+          <nav class="flex flex-col space-y-4">
+            <a href="index.html" class="text-white text-lg font-medium hover:text-[#f43df4] transition-colors py-2">Home</a>
+            <a href="https://stake.ily-validator.com" class="text-white text-lg font-medium hover:text-[#f43df4] transition-colors py-2">Stake</a>
+            <a href="gallery.html" class="text-white text-lg font-medium hover:text-[#f43df4] transition-colors py-2">Gallery</a>
+            <a href="https://note.com/ily562" target="_blank" rel="noopener noreferrer" class="text-white text-lg font-medium hover:text-[#f43df4] transition-colors py-2">Blog</a>
+          </nav>
+        </div>
+      </div>
+      
+      <!-- Overlay -->
+      <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 opacity-0 invisible transition-all duration-300"></div>
+      
+      <div class="layout-container flex h-full grow flex-col">
+        <div class="px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="@container">
+              <div class="@[480px]:p-4">
+                <div
+                  class="flex min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded items-center justify-center p-4"
+                  style='background-image: linear-gradient(rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%), url("images/Fw0cPWHacAUQYFc.jpg");'
+                >
+                  <div class="flex flex-col gap-2 text-center">
+                    <h1
+                      class="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]"
+                    >
+                      ILY♡Validator Gallery
+                    </h1>
+                    <h2 class="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal">
+                      Milady & Remilia Collection
+                    </h2>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gallery Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+              <h2 class="col-span-full text-white text-[22px] font-bold leading-tight tracking-[-0.015em] pb-3 pt-5 text-center">Milady & Remilia Collection</h2>
+              
+              <!-- Image 1 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/完璧な数学を発明した！.png" alt="Perfect Mathematics">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Perfect mathematics invention</p>
+                </div>
+              </div>
+
+              <!-- Image 2 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/燃え盛る世界で積み上げる.png" alt="Building in Burning World">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Building up in a burning world</p>
+                </div>
+              </div>
+
+              <!-- Image 3 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/Cyberpunk Maid in Tech Workspace.png" alt="Tech Curiosity">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Retro style technology art</p>
+                </div>
+              </div>
+
+              <!-- Image 4 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ネットワークのゆらぎと意識.png" alt="Network Consciousness">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Network fluctuations and consciousness</p>
+                </div>
+              </div>
+
+              
+              <!-- Image 5 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/マイ ChatGPT 画像.png" alt="ChatGPT Art">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">AI generated artwork</p>
+                </div>
+              </div>
+
+              <!-- Image 6 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ミレディとグリッチアート.png" alt="Milady Portrait">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Milady with glitch art effects</p>
+                </div>
+              </div>
+
+              <!-- Image 7 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/決意の眼差し.png" alt="Determined Gaze">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Eyes of determination</p>
+                </div>
+              </div>
+
+              <!-- Image 8 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/萌えのトランスフォーマー図♡.png" alt="Moe Transformer">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Cute transformer diagram</p>
+                </div>
+              </div>
+
+              <!-- Image 9 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ミレディ・ローア.png" alt="Milady Portrait 2">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Digital artwork piece</p>
+                </div>
+              </div>
+
+              <!-- Image 10 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/milady-4コマ.png" alt="Milady Portrait 3">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Creative digital art</p>
+                </div>
+              </div>
+
+              <!-- Image 11 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/Rewriting the Rules at Cafe.png" alt="Milady Portrait 4">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Artistic expression</p>
+                </div>
+              </div>
+
+              <!-- Image 12 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_16.png" alt="Milady Portrait 5">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Modern digital art</p>
+                </div>
+              </div>
+
+              <!-- Image 13 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_17.png" alt="Milady Portrait 6">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Contemporary artwork</p>
+                </div>
+              </div>
+
+              <!-- Image 14 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_19.png" alt="Milady Portrait 7">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Visual art piece</p>
+                </div>
+              </div>
+
+              <!-- Image 15 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_22.png" alt="Milady Portrait 8">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Abstract digital art</p>
+                </div>
+              </div>
+
+              <!-- Image 16 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_25.png" alt="Milady Portrait 9">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Digital masterpiece</p>
+                </div>
+              </div>
+
+              <!-- Image 17 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_27.png" alt="Milady Portrait 10">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Creative expression</p>
+                </div>
+              </div>
+
+              <!-- Image 18 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_40_52.png" alt="Milady Portrait 11">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Artistic vision</p>
+                </div>
+              </div>
+
+              <!-- Image 19 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_41_04.png" alt="Milady Portrait 12">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Digital innovation</p>
+                </div>
+              </div>
+
+              <!-- Image 20 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_41_05.png" alt="Milady Portrait 13">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Modern creativity</p>
+                </div>
+              </div>
+
+              <!-- Image 21 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_41_07.png" alt="Character 1">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Visual storytelling</p>
+                </div>
+              </div>
+
+              <!-- Image 22 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/Kawaii Airdrop Success Celebration.png" alt="Kawaii Airdrop">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Kawaii airdrop success celebration</p>
+                </div>
+              </div>
+
+              <!-- Image 23 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/ChatGPT Image 2025年6月21日 10_43_45.png" alt="New Character 1">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Digital character art</p>
+                </div>
+              </div>
+
+              <!-- Image 24 -->
+              <div class="relative group overflow-hidden rounded-lg bg-[#492249] hover:bg-[#5a2c5a] transition-colors">
+                <img class="w-full h-64 object-cover transition-transform group-hover:scale-110" src="gallery/戦場の騎士と夕日.png" alt="Battlefield Knight">
+                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <p class="text-white text-sm font-medium text-center px-4">Knight on the battlefield at sunset</p>
+                </div>
+              </div>
+              
+            </div>
+            
+            <!-- Footer Section -->
+            <div class="flex justify-center pt-8 pb-4">
+              <div class="text-center">
+                <p class="text-white text-sm">
+                  © 2024 ILY♡Validator - 
+                  <a href="https://github.com/ikaika1" class="text-[#f43df4] hover:text-[#e235e2] transition-colors">GitHub</a> | 
+                  <a href="https://discord.gg/XcHVNppSBK" class="text-[#f43df4] hover:text-[#e235e2] transition-colors">Discord</a> | 
+                  <a href="https://x.com/ILY_validator" class="text-[#f43df4] hover:text-[#e235e2] transition-colors">Twitter</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const navMenu = document.getElementById('navMenu');
+        const overlay = document.getElementById('overlay');
+        const hamburgerLines = document.querySelectorAll('.hamburger-line');
+        
+        function toggleMenu() {
+          const isOpen = navMenu.style.transform === 'translateX(0px)' || navMenu.classList.contains('translate-x-0');
+          
+          if (isOpen) {
+            navMenu.style.transform = 'translateX(100%)';
+            navMenu.classList.remove('translate-x-0');
+            overlay.classList.remove('opacity-100', 'visible');
+            overlay.classList.add('opacity-0', 'invisible');
+            
+            hamburgerLines[0].style.transform = 'rotate(0deg) translateY(0px)';
+            hamburgerLines[1].style.opacity = '1';
+            hamburgerLines[2].style.transform = 'rotate(0deg) translateY(0px)';
+          } else {
+            navMenu.style.transform = 'translateX(0px)';
+            navMenu.classList.add('translate-x-0');
+            overlay.classList.remove('opacity-0', 'invisible');
+            overlay.classList.add('opacity-100', 'visible');
+            
+            hamburgerLines[0].style.transform = 'rotate(45deg) translateY(6px)';
+            hamburgerLines[1].style.opacity = '0';
+            hamburgerLines[2].style.transform = 'rotate(-45deg) translateY(-6px)';
+          }
+        }
+        
+        hamburgerBtn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+        
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            const isOpen = navMenu.style.transform === 'translateX(0px)' || navMenu.classList.contains('translate-x-0');
+            if (isOpen) {
+              toggleMenu();
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

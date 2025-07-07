@@ -1,0 +1,15 @@
+{
+  "name": "ily-validator-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:static\" \"npm run dev:staking\"",
+    "dev:static": "npx http-server . -p 3000 -c-1",
+    "dev:staking": "cd solana-staking-ui && npm run dev",
+    "install:all": "npm install && cd solana-staking-ui && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "http-server": "^14.1.1"
+  }
+}
