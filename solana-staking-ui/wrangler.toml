@@ -1,3 +1,3 @@
-name = "ily-validator"              
-compatibility_date = "2025-07-08"  
+name = "ily-website-staking-pages"
+compatibility_date = "2026-07-08"  
 pages_build_output_dir = "./.vercel/output"
