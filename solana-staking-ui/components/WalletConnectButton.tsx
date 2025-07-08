@@ -70,7 +70,7 @@ function WalletConnectButton() {
               <div style={{ margin: "0 auto", position: "relative" }}>
                 <Image
                   src="/milady.svg"
-                  alt="QuickNode Logo"
+                  alt="ILY♡Validator Logo"
                   width={64}
                   height={64}
                   style={{

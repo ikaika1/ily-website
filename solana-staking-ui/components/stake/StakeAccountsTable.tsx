@@ -82,7 +82,7 @@ export function StakeAccountsTable({ stakeAccounts }: StakeAccountsTableProps) {
                 {account.voter === getValidatorAddress() ? (
                   <Image
                     src="/milady.svg"
-                    alt="QuickNode Validator"
+                    alt="ILY♡Validator"
                     width={20}
                     height={20}
                     style={{ margin: "0 auto" }}

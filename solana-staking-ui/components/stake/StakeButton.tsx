@@ -222,7 +222,7 @@ export function StakeButton({
                 >
                   <Image
                     src="/milady.svg"
-                    alt="QuickNode Logo"
+                    alt="ILY♡Validator Logo"
                     width={48}
                     height={48}
                     style={{
