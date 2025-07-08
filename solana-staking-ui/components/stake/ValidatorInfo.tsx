@@ -4,16 +4,14 @@ import Image from "next/image";
 import { getValidatorAddress } from "@/utils/config";
 import { shortenAddress } from "@/utils/solana/address";
 
-interface ValidatorInfoProps {
-  apy: string;
-}
+interface ValidatorInfoProps {}
 
-export function ValidatorInfo({ apy }: ValidatorInfoProps) {
+export function ValidatorInfo({}: ValidatorInfoProps) {
   return (
     <Card style={{ background: "var(--blue-9)" }}>
       <Flex direction="column" gap="3">
         <Text size="2" weight="bold">
-          Validator • {apy}% APY
+          Validator
         </Text>
         <Flex align="center" gap="2">
           <Image

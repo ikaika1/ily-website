@@ -36,7 +36,6 @@ export function StakingForm() {
     []
   );
   const isConnected = useIsWalletConnected();
-  const apy = "7.58%";
   const [showStakeAccounts, setShowStakeAccounts] = useState(true);
 
   useEffect(() => {
@@ -238,7 +237,7 @@ export function StakingForm() {
             </Text>
 
             {/* Validator Info */}
-            <ValidatorInfo apy={apy} />
+            <ValidatorInfo />
           </>
         )}
 
