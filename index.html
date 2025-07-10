@@ -143,9 +143,12 @@
             overlay.classList.remove('opacity-0', 'invisible');
             overlay.classList.add('opacity-100', 'visible');
             
-            hamburgerLines[0].style.transform = 'rotate(45deg) translateY(8px)';
+            const offset = 6;
+            hamburgerLines[0].style.transformOrigin = 'center';
+            hamburgerLines[0].style.transform = `translateY(${offset}px) rotate(45deg)`;
             hamburgerLines[1].style.opacity = '0';
-            hamburgerLines[2].style.transform = 'rotate(-45deg) translateY(-8px)'
+            hamburgerLines[2].style.transformOrigin = 'center';
+            hamburgerLines[2].style.transform = `translateY(${-offset}px) rotate(-45deg)`;
           }
         }
         
