@@ -1,7 +1,7 @@
 import { Button, Flex, Dialog, Text } from "@radix-ui/themes";
 import { LockClosedIcon } from "@radix-ui/react-icons";
 import { useCallback, useRef, useState } from "react";
-import { UiWalletAccount } from "@wallet-standard/react";
+import { UiWalletAccount, useWallets } from "@wallet-standard/react";
 import { useWalletAccountTransactionSendingSigner } from "@solana/react";
 import {
   generateKeyPairSigner,
@@ -17,6 +17,32 @@ import { ErrorDialog } from "../ErrorDialog";
 import { StakeSuccessModal } from "./StakeSuccessModal";
 import Image from "next/image";
 
+// Helper function to detect Phantom wallet
+function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount): boolean {
+  for (const wallet of wallets) {
+    if (wallet.accounts.some(acc => acc.address === account.address)) {
+      return wallet.name.toLowerCase().includes('phantom');
+    }
+  }
+  return false;
+}
+
+// Helper function to access wallet's signTransaction if available
+function getWalletSignTransaction(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount) {
+  for (const wallet of wallets) {
+    if (wallet.accounts.some(acc => acc.address === account.address)) {
+      // Check if wallet has signTransaction feature
+      if (wallet.features && 'solana:signTransaction' in wallet.features) {
+        const feature = wallet.features['solana:signTransaction'];
+        if (feature && typeof feature === 'object' && 'signTransaction' in feature) {
+          return feature;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 interface StakeButtonProps {
   account: UiWalletAccount;
   stakeAmount: string;
@@ -31,6 +57,7 @@ export function StakeButton({
   onSuccess
 }: StakeButtonProps) {
   const currentChain = getCurrentChain();
+  const wallets = useWallets();
   const transactionSendingSigner = useWalletAccountTransactionSendingSigner(
     account,
     currentChain
@@ -75,22 +102,69 @@ export function StakeButton({
         if (!generateResponse.ok) {
           throw new Error("Failed to generate transaction");
         }
-        const { wireTransaction } = (await generateResponse.json()) as {
+        const { wireTransaction, computeUnitEstimate, needsSplitting, transactionSize } = (await generateResponse.json()) as {
           wireTransaction: Base64EncodedWireTransaction;
+          computeUnitEstimate: number;
+          needsSplitting: boolean;
+          transactionSize: number;
         };
+
+        // Log transaction optimization info
+        console.log("Transaction details:", {
+          computeUnitEstimate,
+          needsSplitting,
+          transactionSize,
+          isPhantom: isPhantomWallet(wallets, account)
+        });
 
         const base64Encoder = getBase64Encoder();
         const transactionBytes = base64Encoder.encode(wireTransaction);
         const transactionDecoder = getTransactionDecoder();
         const decodedTransaction = transactionDecoder.decode(transactionBytes);
-        const partialSignedTransaction = await partiallySignTransaction(
-          [newAccount.keyPair],
-          decodedTransaction
-        );
+        
+        // Implement multiple signers pattern for Phantom wallet
+        let finalTransaction = decodedTransaction;
+        
+        if (isPhantomWallet(wallets, account)) {
+          const signTransaction = getWalletSignTransaction(wallets, account);
+          if (signTransaction) {
+            try {
+              // Step 1: First sign with Phantom to add Lighthouse instructions
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
+              
+              // Step 2: Then partially sign with stake account
+              finalTransaction = await partiallySignTransaction(
+                [newAccount.keyPair],
+                phantomSignedTx
+              );
+            } catch (phantomError) {
+              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
+              // Fallback to standard flow if Phantom signTransaction fails
+              finalTransaction = await partiallySignTransaction(
+                [newAccount.keyPair],
+                decodedTransaction
+              );
+            }
+          } else {
+            // Standard flow for Phantom without signTransaction feature
+            finalTransaction = await partiallySignTransaction(
+              [newAccount.keyPair],
+              decodedTransaction
+            );
+          }
+        } else {
+          // Standard flow for non-Phantom wallets
+          finalTransaction = await partiallySignTransaction(
+            [newAccount.keyPair],
+            decodedTransaction
+          );
+        }
+        
         // leverages the wallet's transaction sending signer and rpc
         const rawSignature =
           await transactionSendingSigner.signAndSendTransactions([
-            partialSignedTransaction
+            finalTransaction
           ]);
         const signature = getBase58Decoder().decode(rawSignature[0]);
 
@@ -126,7 +200,7 @@ export function StakeButton({
         setIsSendingTransaction(false);
       }
     },
-    [account, stakeAmount, transactionSendingSigner, NO_ERROR]
+    [account, stakeAmount, transactionSendingSigner, NO_ERROR, wallets]
   );
 
   const handleCloseModal = useCallback(() => {

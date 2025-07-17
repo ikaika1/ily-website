@@ -34,3 +34,14 @@ export const INVALID_BUT_SUFFICIENT_FOR_COMPILATION_BLOCKHASH = {
 
 export const MAX_COMPUTE_UNIT_LIMIT = 1_400_000;
 export const DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS = 1;
+
+// Address Lookup Tables for transaction size optimization
+export const COMMON_LOOKUP_TABLES = [
+  // System Program and other common addresses
+  address("11111111111111111111111111111111"), // System Program
+  address("SysvarC1ock11111111111111111111111111111111"), // Clock sysvar
+  address("SysvarRent111111111111111111111111111111111"), // Rent sysvar
+  address("SysvarStakeHistory1111111111111111111111111"), // Stake history sysvar
+  address("StakeConfig11111111111111111111111111111111"), // Stake config
+  STAKE_PROGRAM_ADDRESS, // Stake program
+] as const;
