@@ -27,14 +27,14 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
-// Helper function to access wallet's signTransaction if available
-function getWalletSignTransaction(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount) {
+// Helper function to access wallet's signAndSendTransaction if available
+function getWalletSignAndSendTransaction(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount) {
   for (const wallet of wallets) {
     if (wallet.accounts.some(acc => acc.address === account.address)) {
-      // Check if wallet has signTransaction feature
-      if (wallet.features && 'solana:signTransaction' in wallet.features) {
-        const feature = wallet.features['solana:signTransaction'];
-        if (feature && typeof feature === 'object' && 'signTransaction' in feature) {
+      // Check if wallet has signAndSendTransaction feature
+      if (wallet.features && 'solana:signAndSendTransaction' in wallet.features) {
+        const feature = wallet.features['solana:signAndSendTransaction'];
+        if (feature && typeof feature === 'object' && 'signAndSendTransaction' in feature) {
           return feature;
         }
       }
@@ -122,51 +122,57 @@ export function StakeButton({
         const transactionDecoder = getTransactionDecoder();
         const decodedTransaction = transactionDecoder.decode(transactionBytes);
         
-        // Implement multiple signers pattern for Phantom wallet
-        let finalTransaction = decodedTransaction;
+        // Implement Phantom wallet optimized flow
+        let signature: string;
         
         if (isPhantomWallet(wallets, account)) {
-          const signTransaction = getWalletSignTransaction(wallets, account);
-          if (signTransaction) {
+          const signAndSendTransaction = getWalletSignAndSendTransaction(wallets, account);
+          if (signAndSendTransaction) {
             try {
-              // Step 1: First sign with Phantom to add Lighthouse instructions
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
-              
-              // Step 2: Then partially sign with stake account
-              finalTransaction = await partiallySignTransaction(
-                [newAccount.keyPair],
-                phantomSignedTx
-              );
-            } catch (phantomError) {
-              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
-              // Fallback to standard flow if Phantom signTransaction fails
-              finalTransaction = await partiallySignTransaction(
+              // Step 1: Partially sign with stake account first
+              const partiallySignedTx = await partiallySignTransaction(
                 [newAccount.keyPair],
                 decodedTransaction
               );
+              
+              // Step 2: Use Phantom's signAndSendTransaction (recommended approach)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const result = await (signAndSendTransaction as { signAndSendTransaction: (tx: any) => Promise<{ signature: string }> }).signAndSendTransaction(partiallySignedTx);
+              signature = result.signature;
+            } catch (phantomError) {
+              console.warn('Phantom signAndSendTransaction failed, falling back to standard flow:', phantomError);
+              // Fallback to standard flow if Phantom signAndSendTransaction fails
+              const finalTransaction = await partiallySignTransaction(
+                [newAccount.keyPair],
+                decodedTransaction
+              );
+              const rawSignature = await transactionSendingSigner.signAndSendTransactions([
+                finalTransaction
+              ]);
+              signature = getBase58Decoder().decode(rawSignature[0]);
             }
           } else {
-            // Standard flow for Phantom without signTransaction feature
-            finalTransaction = await partiallySignTransaction(
+            // Standard flow for Phantom without signAndSendTransaction feature
+            const finalTransaction = await partiallySignTransaction(
               [newAccount.keyPair],
               decodedTransaction
             );
+            const rawSignature = await transactionSendingSigner.signAndSendTransactions([
+              finalTransaction
+            ]);
+            signature = getBase58Decoder().decode(rawSignature[0]);
           }
         } else {
           // Standard flow for non-Phantom wallets
-          finalTransaction = await partiallySignTransaction(
+          const finalTransaction = await partiallySignTransaction(
             [newAccount.keyPair],
             decodedTransaction
           );
-        }
-        
-        // leverages the wallet's transaction sending signer and rpc
-        const rawSignature =
-          await transactionSendingSigner.signAndSendTransactions([
+          const rawSignature = await transactionSendingSigner.signAndSendTransactions([
             finalTransaction
           ]);
-        const signature = getBase58Decoder().decode(rawSignature[0]);
+          signature = getBase58Decoder().decode(rawSignature[0]);
+        }
 
         // Call the new confirmation API endpoint
         const confirmResponse = await fetch("/api/transaction/confirm", {
