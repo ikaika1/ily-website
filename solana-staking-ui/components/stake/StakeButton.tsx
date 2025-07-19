@@ -147,8 +147,7 @@ export function StakeButton({
               
               const sendResult = await rpc.sendTransaction(base64Tx, {
                 skipPreflight: false,
-                preflightCommitment: 'processed',
-                maxRetries: 3
+                preflightCommitment: 'processed'
               }).send();
               
               signature = sendResult;
