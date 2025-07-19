@@ -143,7 +143,7 @@ export function StakeButton({
               // Step 3: Send transaction via RPC (allows Lighthouse integration)
               const rpc = createRpcConnection();
               const serializedTx = signedTx.serialize();
-              const base64Tx = getBase64Encoder().encode(serializedTx);
+              const base64Tx = getBase64Encoder().encode(serializedTx) as string;
               
               const sendResult = await rpc.sendTransaction(base64Tx, {
                 skipPreflight: false,
