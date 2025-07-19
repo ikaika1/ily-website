@@ -13,6 +13,7 @@ import {
 } from "@solana/kit";
 import { getCurrentChain } from "@/utils/config";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
+import { createRpcConnection } from "@/utils/solana/rpc";
 import { ErrorDialog } from "../ErrorDialog";
 import { StakeSuccessModal } from "./StakeSuccessModal";
 import Image from "next/image";
@@ -27,14 +28,14 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
-// Helper function to access wallet's signAndSendTransaction if available
-function getWalletSignAndSendTransaction(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount) {
+// Helper function to access wallet's signTransaction feature (Lighthouse compatible)
+function getWalletSignTransaction(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount) {
   for (const wallet of wallets) {
     if (wallet.accounts.some(acc => acc.address === account.address)) {
-      // Check if wallet has signAndSendTransaction feature
-      if (wallet.features && 'solana:signAndSendTransaction' in wallet.features) {
-        const feature = wallet.features['solana:signAndSendTransaction'];
-        if (feature && typeof feature === 'object' && 'signAndSendTransaction' in feature) {
+      // Check if wallet has signTransaction feature
+      if (wallet.features && 'solana:signTransaction' in wallet.features) {
+        const feature = wallet.features['solana:signTransaction'];
+        if (feature && typeof feature === 'object' && 'signTransaction' in feature) {
           return feature;
         }
       }
@@ -122,12 +123,12 @@ export function StakeButton({
         const transactionDecoder = getTransactionDecoder();
         const decodedTransaction = transactionDecoder.decode(transactionBytes);
         
-        // Implement Phantom wallet optimized flow
+        // Implement Lighthouse-compatible flow with signTransaction + RPC sending
         let signature: string;
         
         if (isPhantomWallet(wallets, account)) {
-          const signAndSendTransaction = getWalletSignAndSendTransaction(wallets, account);
-          if (signAndSendTransaction) {
+          const signTransaction = getWalletSignTransaction(wallets, account);
+          if (signTransaction) {
             try {
               // Step 1: Partially sign with stake account first
               const partiallySignedTx = await partiallySignTransaction(
@@ -135,13 +136,25 @@ export function StakeButton({
                 decodedTransaction
               );
               
-              // Step 2: Use Phantom's signAndSendTransaction (recommended approach)
+              // Step 2: Use Phantom's signTransaction (Lighthouse compatible)
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const result = await (signAndSendTransaction as { signAndSendTransaction: (tx: any) => Promise<{ signature: string }> }).signAndSendTransaction(partiallySignedTx);
-              signature = result.signature;
+              const signedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(partiallySignedTx);
+              
+              // Step 3: Send transaction via RPC (allows Lighthouse integration)
+              const rpc = createRpcConnection();
+              const serializedTx = signedTx.serialize();
+              const base64Tx = getBase64Encoder().encode(serializedTx);
+              
+              const sendResult = await rpc.sendTransaction(base64Tx, {
+                skipPreflight: false,
+                preflightCommitment: 'processed',
+                maxRetries: 3
+              }).send();
+              
+              signature = sendResult;
             } catch (phantomError) {
-              console.warn('Phantom signAndSendTransaction failed, falling back to standard flow:', phantomError);
-              // Fallback to standard flow if Phantom signAndSendTransaction fails
+              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
+              // Fallback to standard flow if Phantom signTransaction fails
               const finalTransaction = await partiallySignTransaction(
                 [newAccount.keyPair],
                 decodedTransaction
@@ -152,7 +165,7 @@ export function StakeButton({
               signature = getBase58Decoder().decode(rawSignature[0]);
             }
           } else {
-            // Standard flow for Phantom without signAndSendTransaction feature
+            // Standard flow for Phantom without signTransaction feature
             const finalTransaction = await partiallySignTransaction(
               [newAccount.keyPair],
               decodedTransaction
