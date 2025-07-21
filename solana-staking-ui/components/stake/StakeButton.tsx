@@ -6,7 +6,7 @@ import { useWalletAccountTransactionSendingSigner } from "@solana/react";
 import {
   generateKeyPairSigner,
   getBase58Decoder,
-  getBase64Encoder,
+  getBase64Decoder,
   getTransactionDecoder,
   partiallySignTransaction,
   Base64EncodedWireTransaction
@@ -118,8 +118,8 @@ export function StakeButton({
           isPhantom: isPhantomWallet(wallets, account)
         });
 
-        const base64Encoder = getBase64Encoder();
-        const transactionBytes = base64Encoder.encode(wireTransaction);
+        const base64Decoder = getBase64Decoder();
+        const transactionBytes = base64Decoder.decode(wireTransaction);
         const transactionDecoder = getTransactionDecoder();
         const decodedTransaction = transactionDecoder.decode(transactionBytes);
         
