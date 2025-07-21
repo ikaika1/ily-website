@@ -126,7 +126,7 @@ function getStakeMessage({
 
 export async function POST(request: Request) {
   try {
-    const { stakeLamports, stakerAddress, newAccountAddress } =
+    const { stakeLamports, stakerAddress, newAccountAddress, instructionsOnly = false } =
       await request.json();
 
     if (!stakeLamports) {
@@ -172,6 +172,39 @@ export async function POST(request: Request) {
     const { value: latestBlockhash } = await rpc
       .getLatestBlockhash({ commitment: "confirmed" })
       .send();
+
+    // Return instruction data for client-side transaction building (Phantom-specific)
+    if (instructionsOnly) {
+      return NextResponse.json({
+        instructions: {
+          computeUnitLimit: computeUnitEstimate,
+          priorityFeeMicroLamports: DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS,
+          createAccount: {
+            fromPubkey: stakerAddress,
+            newAccountPubkey: newAccountAddress,
+            lamports: stakeLamports,
+            space: STAKE_PROGRAM.STAKE_ACCOUNT_SPACE,
+            programId: STAKE_PROGRAM.ADDRESS
+          },
+          initializeStake: {
+            stakePubkey: newAccountAddress,
+            authorized: {
+              staker: stakerAddress,
+              withdrawer: stakerAddress
+            },
+            lockup: STAKE_PROGRAM.DEFAULT_LOCKUP
+          },
+          delegateStake: {
+            stakePubkey: newAccountAddress,
+            votePubkey: getValidatorAddress(),
+            authorizedPubkey: stakerAddress
+          }
+        },
+        blockhash: latestBlockhash.blockhash,
+        computeUnitEstimate
+      });
+    }
+
     const message = getStakeMessage({
       authority,
       authorityNoopSigner,

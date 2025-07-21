@@ -126,67 +126,66 @@ export function StakeButton({
         // Implement Lighthouse-compatible flow with signTransaction + RPC sending
         let signature: string;
         
-        if (isPhantomWallet(wallets, account)) {
-          const signTransaction = getWalletSignTransaction(wallets, account);
-          if (signTransaction) {
-            try {
-              // Step 1: Phantom が最初に未署名トランザクションに署名
-              // （Lighthouseがここで安全性チェックとインジェクションを実行）
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
-              
-              // Step 2: Phantom署名後に、stake accountの署名を追加
-              const finalSignedTx = await partiallySignTransaction(
-                [newAccount.keyPair],
-                phantomSignedTx
-              );
-              
-              // Step 3: 完全に署名されたトランザクションをRPC送信
-              const rpc = createRpcConnection();
-              const serializedTx = finalSignedTx.serialize();
-              const base64Tx = Buffer.from(serializedTx).toString('base64');
-              
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const sendResult = await rpc.sendTransaction(base64Tx as any, {
-                skipPreflight: false,
-                preflightCommitment: 'processed'
-              }).send();
-              
-              signature = sendResult;
-            } catch (phantomError) {
-              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
-              // Fallback to standard flow if Phantom signTransaction fails
-              const finalTransaction = await partiallySignTransaction(
-                [newAccount.keyPair],
-                decodedTransaction
-              );
-              const rawSignature = await transactionSendingSigner.signAndSendTransactions([
-                finalTransaction
-              ]);
-              signature = getBase58Decoder().decode(rawSignature[0]);
-            }
-          } else {
-            // Standard flow for Phantom without signTransaction feature
-            const finalTransaction = await partiallySignTransaction(
-              [newAccount.keyPair],
-              decodedTransaction
-            );
-            const rawSignature = await transactionSendingSigner.signAndSendTransactions([
-              finalTransaction
-            ]);
-            signature = getBase58Decoder().decode(rawSignature[0]);
-          }
-        } else {
-          // Standard flow for non-Phantom wallets
-          const finalTransaction = await partiallySignTransaction(
-            [newAccount.keyPair],
-            decodedTransaction
-          );
-          const rawSignature = await transactionSendingSigner.signAndSendTransactions([
-            finalTransaction
-          ]);
-          signature = getBase58Decoder().decode(rawSignature[0]);
-        }
+       if (isPhantomWallet(wallets, account)) {
+  const signTransaction = getWalletSignTransaction(wallets, account);
+  if (signTransaction) {
+    try {
+      // Step 1: Phantomが最初に署名（未署名のトランザクションに対して）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
+      
+      // Step 2: Phantom署名後に、stake accountの署名を追加
+      const fullySignedTx = await partiallySignTransaction(
+        [newAccount.keyPair],
+        phantomSignedTx
+      );
+      
+      // Step 3: 完全に署名されたトランザクションをRPC送信
+      const rpc = createRpcConnection();
+      const serializedTx = fullySignedTx.serialize();
+      const base64Tx = Buffer.from(serializedTx).toString('base64');
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sendResult = await rpc.sendTransaction(base64Tx as any, {
+        skipPreflight: false,
+        preflightCommitment: 'processed'
+      }).send();
+      
+      signature = sendResult;
+    } catch (phantomError) {
+      console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
+      // Fallback to standard flow if Phantom signTransaction fails
+      const finalTransaction = await partiallySignTransaction(
+        [newAccount.keyPair],
+        decodedTransaction
+      );
+      const rawSignature = await transactionSendingSigner.signAndSendTransactions([
+        finalTransaction
+      ]);
+      signature = getBase58Decoder().decode(rawSignature[0]);
+    }
+  } else {
+    // Standard flow for Phantom without signTransaction feature
+    const finalTransaction = await partiallySignTransaction(
+      [newAccount.keyPair],
+      decodedTransaction
+    );
+    const rawSignature = await transactionSendingSigner.signAndSendTransactions([
+      finalTransaction
+    ]);
+    signature = getBase58Decoder().decode(rawSignature[0]);
+  }
+} else {
+  // Standard flow for non-Phantom wallets
+  const finalTransaction = await partiallySignTransaction(
+    [newAccount.keyPair],
+    decodedTransaction
+  );
+  const rawSignature = await transactionSendingSigner.signAndSendTransactions([
+    finalTransaction
+  ]);
+  signature = getBase58Decoder().decode(rawSignature[0]);
+}
 
         // Call the new confirmation API endpoint
         const confirmResponse = await fetch("/api/transaction/confirm", {
