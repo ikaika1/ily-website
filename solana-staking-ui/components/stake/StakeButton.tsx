@@ -130,19 +130,20 @@ export function StakeButton({
           const signTransaction = getWalletSignTransaction(wallets, account);
           if (signTransaction) {
             try {
-              // Step 1: Partially sign with stake account first
-              const partiallySignedTx = await partiallySignTransaction(
+              // Step 1: Phantom が最初に未署名トランザクションに署名
+              // （Lighthouseがここで安全性チェックとインジェクションを実行）
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
+              
+              // Step 2: Phantom署名後に、stake accountの署名を追加
+              const finalSignedTx = await partiallySignTransaction(
                 [newAccount.keyPair],
-                decodedTransaction
+                phantomSignedTx
               );
               
-              // Step 2: Use Phantom's signTransaction (Lighthouse compatible)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const signedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(partiallySignedTx);
-              
-              // Step 3: Send transaction via RPC (allows Lighthouse integration)
+              // Step 3: 完全に署名されたトランザクションをRPC送信
               const rpc = createRpcConnection();
-              const serializedTx = signedTx.serialize();
+              const serializedTx = finalSignedTx.serialize();
               const base64Tx = Buffer.from(serializedTx).toString('base64');
               
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
