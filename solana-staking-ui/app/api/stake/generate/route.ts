@@ -126,7 +126,7 @@ function getStakeMessage({
 
 export async function POST(request: Request) {
   try {
-    const { stakeLamports, stakerAddress, newAccountAddress, instructionsOnly = false } =
+    const { stakeLamports, stakerAddress, newAccountAddress } =
       await request.json();
 
     if (!stakeLamports) {
@@ -172,39 +172,6 @@ export async function POST(request: Request) {
     const { value: latestBlockhash } = await rpc
       .getLatestBlockhash({ commitment: "confirmed" })
       .send();
-
-    // Return instruction data for client-side transaction building (Phantom-specific)
-    if (instructionsOnly) {
-      return NextResponse.json({
-        instructions: {
-          computeUnitLimit: computeUnitEstimate,
-          priorityFeeMicroLamports: DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS,
-          createAccount: {
-            fromPubkey: stakerAddress,
-            newAccountPubkey: newAccountAddress,
-            lamports: stakeLamports,
-            space: STAKE_PROGRAM.STAKE_ACCOUNT_SPACE,
-            programId: STAKE_PROGRAM.ADDRESS
-          },
-          initializeStake: {
-            stakePubkey: newAccountAddress,
-            authorized: {
-              staker: stakerAddress,
-              withdrawer: stakerAddress
-            },
-            lockup: STAKE_PROGRAM.DEFAULT_LOCKUP
-          },
-          delegateStake: {
-            stakePubkey: newAccountAddress,
-            votePubkey: getValidatorAddress(),
-            authorizedPubkey: stakerAddress
-          }
-        },
-        blockhash: latestBlockhash.blockhash,
-        computeUnitEstimate
-      });
-    }
-
     const message = getStakeMessage({
       authority,
       authorityNoopSigner,
@@ -242,16 +209,33 @@ export async function POST(request: Request) {
     }
 
     const finalCompiledTransaction = compileTransaction(finalMessage);
-    const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
+    //const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
+
 
     // Check if transaction splitting might be needed for future optimization
     const needsSplitting = shouldSplitTransaction(computeUnitEstimate);
 
     return NextResponse.json({
-      wireTransaction,
-      computeUnitEstimate,
-      needsSplitting,
-      transactionSize: Math.round(transactionSize)
+        // トランザクションメッセージのシリアライズ（コンパイルしない）
+  transactionMessage: {
+    version: 0,
+    header: {
+      numRequiredSignatures: 2,
+      numReadonlySignedAccounts: 0,
+      numReadonlyUnsignedAccounts: 5
+    },
+    staticAccountKeys: [
+      authority.toString(),
+      newAccount.toString(),
+      // ... 他のアカウント
+    ],
+    recentBlockhash: latestBlockhash.blockhash,
+    compiledInstructions: [
+      // インストラクションデータ
+    ]
+  },
+  computeUnitEstimate,
+  needsSplitting
     });
   } catch (error) {
     console.error("Error generating stake transaction:", error);
