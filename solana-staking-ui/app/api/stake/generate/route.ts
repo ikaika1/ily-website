@@ -209,33 +209,16 @@ export async function POST(request: Request) {
     }
 
     const finalCompiledTransaction = compileTransaction(finalMessage);
-    //const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
-
+    const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
 
     // Check if transaction splitting might be needed for future optimization
     const needsSplitting = shouldSplitTransaction(computeUnitEstimate);
 
     return NextResponse.json({
-        // トランザクションメッセージのシリアライズ（コンパイルしない）
-  transactionMessage: {
-    version: 0,
-    header: {
-      numRequiredSignatures: 2,
-      numReadonlySignedAccounts: 0,
-      numReadonlyUnsignedAccounts: 5
-    },
-    staticAccountKeys: [
-      authority.toString(),
-      newAccount.toString(),
-      // ... 他のアカウント
-    ],
-    recentBlockhash: latestBlockhash.blockhash,
-    compiledInstructions: [
-      // インストラクションデータ
-    ]
-  },
-  computeUnitEstimate,
-  needsSplitting
+      wireTransaction,
+      computeUnitEstimate,
+      needsSplitting,
+      transactionSize
     });
   } catch (error) {
     console.error("Error generating stake transaction:", error);
