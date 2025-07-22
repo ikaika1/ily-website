@@ -128,9 +128,13 @@ export function StakeButton({
   const signTransaction = getWalletSignTransaction(wallets, account);
   if (signTransaction) {
     try {
-      // Step 1: Phantomが最初に署名（未署名のトランザクションに対して）
+      // Step 1: 署名フィールドをクリアしてからPhantomに渡す
+      const unsignedTransaction = {
+        ...decodedTransaction,
+        signatures: [] // 署名配列を空にする
+      };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(decodedTransaction);
+      const phantomSignedTx = await (signTransaction as { signTransaction: (tx: any) => Promise<any> }).signTransaction(unsignedTransaction);
       
       // Step 2: Phantom署名後に、stake accountの署名を追加
       const fullySignedTx = await partiallySignTransaction(
