@@ -15,7 +15,6 @@ import { LAMPORTS_PER_SOL } from "@/utils/constants";
 import { ErrorDialog } from "../ErrorDialog";
 import { StakeSuccessModal } from "./StakeSuccessModal";
 import Image from "next/image";
-import { VersionedTransaction } from '@solana/web3.js';
 
 // Helper function to detect Phantom wallet
 function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount): boolean {
@@ -27,16 +26,6 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
-// Helper function to get Phantom provider with signTransaction support
-function getPhantomProvider() {
-  if (typeof window !== 'undefined' && 'phantom' in window) {
-    const provider = (window as { phantom?: { solana?: { isPhantom?: boolean; signTransaction?: (transaction: VersionedTransaction) => Promise<VersionedTransaction> } } }).phantom?.solana;
-    if (provider?.isPhantom) {
-      return provider;
-    }
-  }
-  return null;
-}
 
 interface StakeButtonProps {
   account: UiWalletAccount;
@@ -82,83 +71,70 @@ export function StakeButton({
           parseFloat(stakeAmount) * LAMPORTS_PER_SOL
         );
 
-        // Step 1: Generate the transaction message
-        const generateResponse = await fetch("/api/stake/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            newAccountAddress: newAccount.address,
-            stakeLamports,
-            stakerAddress: account.address
-          })
-        });
-        if (!generateResponse.ok) {
-          throw new Error("Failed to generate transaction");
-        }
-        const { wireTransaction, computeUnitEstimate, needsSplitting, transactionSize } = (await generateResponse.json()) as {
-          wireTransaction: Base64EncodedWireTransaction;
-          computeUnitEstimate: number;
-          needsSplitting: boolean;
-          transactionSize: number;
-        };
-
-        // Log transaction optimization info
-        console.log("Transaction details:", {
-          computeUnitEstimate,
-          needsSplitting,
-          transactionSize,
-          isPhantom: isPhantomWallet(wallets, account)
-        });
+        const isPhantom = isPhantomWallet(wallets, account);
 
         let signature: string;
         
-        if (isPhantomWallet(wallets, account)) {
-          const phantomProvider = getPhantomProvider();
-          if (phantomProvider && phantomProvider.signTransaction) {
-            try {
-              // Use the standard flow with proper signing for Phantom
-              const transactionBytes = Buffer.from(wireTransaction, "base64");
-              const transactionDecoder = getTransactionDecoder();
-              const decodedTransaction = transactionDecoder.decode(transactionBytes);
-              const finalTransaction = await partiallySignTransaction(
-                [newAccount.keyPair],
-                decodedTransaction
-              );
-              const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
-              const rawSignature = rawSignatures[0];
-              signature = getBase58Decoder().decode(rawSignature);
-              
-            } catch (phantomError) {
-              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
-              // Fallback to standard flow if Phantom fails
-              const transactionBytes = Buffer.from(wireTransaction, "base64");
-              const transactionDecoder = getTransactionDecoder();
-              const decodedTransaction = transactionDecoder.decode(transactionBytes);
-              const finalTransaction = await partiallySignTransaction(
-                [newAccount.keyPair],
-                decodedTransaction
-              );
-              const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
-              const rawSignature = rawSignatures[0];
-              signature = getBase58Decoder().decode(rawSignature);
-            }
-          } else {
-            // Standard flow for Phantom without direct provider access
-            const transactionBytes = Buffer.from(wireTransaction, "base64");
-            const transactionDecoder = getTransactionDecoder();
-            const decodedTransaction = transactionDecoder.decode(transactionBytes);
-            const finalTransaction = await partiallySignTransaction(
-              [newAccount.keyPair],
-              decodedTransaction
-            );
-            const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
-            const rawSignature = rawSignatures[0];
-            signature = getBase58Decoder().decode(rawSignature);
+        if (isPhantom) {
+          // For Phantom, generate a special unsigned transaction
+          const generateResponse = await fetch("/api/stake/generate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              newAccountAddress: newAccount.address,
+              stakeLamports,
+              stakerAddress: account.address,
+              isPhantom: true // Signal to backend to create unsigned transaction
+            })
+          });
+          
+          if (!generateResponse.ok) {
+            throw new Error("Failed to generate transaction");
           }
+          
+          const { wireTransaction } = (await generateResponse.json()) as {
+            wireTransaction: Base64EncodedWireTransaction;
+          };
+
+          // Decode the unsigned transaction
+          const transactionBytes = Buffer.from(wireTransaction, "base64");
+          const transactionDecoder = getTransactionDecoder();
+          const decodedTransaction = transactionDecoder.decode(transactionBytes);
+
+          // For Phantom, partially sign with the new account first
+          const partiallySignedTransaction = await partiallySignTransaction(
+            [newAccount.keyPair],
+            decodedTransaction
+          );
+
+          // Then let Phantom sign and send
+          const [txSignature] = await transactionSendingSigner.signAndSendTransactions([partiallySignedTransaction]);
+          signature = getBase58Decoder().decode(txSignature);
+
         } else {
           // Standard flow for non-Phantom wallets
+          const generateResponse = await fetch("/api/stake/generate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              newAccountAddress: newAccount.address,
+              stakeLamports,
+              stakerAddress: account.address
+            })
+          });
+          
+          if (!generateResponse.ok) {
+            throw new Error("Failed to generate transaction");
+          }
+          
+          const { wireTransaction } = (await generateResponse.json()) as {
+            wireTransaction: Base64EncodedWireTransaction;
+          };
+
           const transactionBytes = Buffer.from(wireTransaction, "base64");
           const transactionDecoder = getTransactionDecoder();
           const decodedTransaction = transactionDecoder.decode(transactionBytes);
@@ -171,7 +147,7 @@ export function StakeButton({
           signature = getBase58Decoder().decode(rawSignature);
         }
 
-        // Call the new confirmation API endpoint
+        // Call the confirmation API endpoint
         const confirmResponse = await fetch("/api/transaction/confirm", {
           method: "POST",
           headers: {
@@ -248,7 +224,7 @@ export function StakeButton({
         >
           <LockClosedIcon width={20} height={20} color="white" />
           <span>{buttonLabel}</span>
-          </div>
+        </div>
       </Button>
 
       {/* Loading Dialog */}
