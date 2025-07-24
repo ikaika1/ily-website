@@ -11,10 +11,12 @@ import {
   Base64EncodedWireTransaction
 } from "@solana/kit";
 import { getCurrentChain } from "@/utils/config";
+import { createRpcConnection } from "@/utils/solana/rpc";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
 import { ErrorDialog } from "../ErrorDialog";
 import { StakeSuccessModal } from "./StakeSuccessModal";
 import Image from "next/image";
+import { VersionedTransaction, Keypair } from '@solana/web3.js';
 
 // Helper function to detect Phantom wallet
 function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount): boolean {
@@ -26,10 +28,10 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
-// Helper function to get Phantom provider for direct signAndSendTransaction
+// Helper function to get Phantom provider with signTransaction support
 function getPhantomProvider() {
   if (typeof window !== 'undefined' && 'phantom' in window) {
-    const provider = (window as { phantom?: { solana?: { isPhantom?: boolean; signAndSendTransaction?: (transaction: unknown) => Promise<{ signature: string }> } } }).phantom?.solana;
+    const provider = (window as { phantom?: { solana?: { isPhantom?: boolean; signTransaction?: (transaction: VersionedTransaction) => Promise<VersionedTransaction> } } }).phantom?.solana;
     if (provider?.isPhantom) {
       return provider;
     }
@@ -111,23 +113,41 @@ export function StakeButton({
           isPhantom: isPhantomWallet(wallets, account)
         });
 
-        const transactionBytes = Buffer.from(wireTransaction, "base64");
-        const transactionDecoder = getTransactionDecoder();
-        const decodedTransaction = transactionDecoder.decode(transactionBytes);
+        const newAccountKeypair = Keypair.fromSecretKey(new Uint8Array(await crypto.subtle.exportKey('raw', newAccount.keyPair.privateKey)));
         
-        // Implement Lighthouse-compatible flow with signTransaction + RPC sending
         let signature: string;
         
         if (isPhantomWallet(wallets, account)) {
           const phantomProvider = getPhantomProvider();
-          if (phantomProvider && phantomProvider.signAndSendTransaction) {
+          if (phantomProvider && phantomProvider.signTransaction) {
             try {
-              // Step 1: First sign with Phantom only (using signAndSendTransaction)
-              const result = await phantomProvider.signAndSendTransaction(decodedTransaction);
-              signature = result.signature;
+              //  修正版              
+              // 1. Phantom用に署名なしの新しいクリーンなトランザクションを作成
+
+              const cleanTransactionBytes = Buffer.from(wireTransaction, "base64");
+              const originalTransaction = VersionedTransaction.deserialize(cleanTransactionBytes);
+              const cleanTransaction = new VersionedTransaction(originalTransaction.message);
+              
+              // 2. Phantomで署名
+              const phantomSigned = await phantomProvider.signTransaction(cleanTransaction);
+              
+              // 3. 追加署名が必要なら後で追加
+              phantomSigned.sign([newAccountKeypair]);
+              
+              // 4. RPCで送信 (sendRawTransactionとして生のバイトを送信)
+              const rpc = createRpcConnection();
+              const serializedTransaction = Buffer.from(phantomSigned.serialize()).toString('base64');
+              const sig = await rpc.sendTransaction(serializedTransaction as Base64EncodedWireTransaction, {
+                skipPreflight: false,
+              }).send();
+              signature = sig;
+              
             } catch (phantomError) {
-              console.warn('Phantom signAndSendTransaction failed, falling back to standard flow:', phantomError);
+              console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
               // Fallback to standard flow if Phantom fails
+              const transactionBytes = Buffer.from(wireTransaction, "base64");
+              const transactionDecoder = getTransactionDecoder();
+              const decodedTransaction = transactionDecoder.decode(transactionBytes);
               const finalTransaction = await partiallySignTransaction(
                 [newAccount.keyPair],
                 decodedTransaction
@@ -138,6 +158,9 @@ export function StakeButton({
             }
           } else {
             // Standard flow for Phantom without direct provider access
+            const transactionBytes = Buffer.from(wireTransaction, "base64");
+            const transactionDecoder = getTransactionDecoder();
+            const decodedTransaction = transactionDecoder.decode(transactionBytes);
             const finalTransaction = await partiallySignTransaction(
               [newAccount.keyPair],
               decodedTransaction
@@ -148,6 +171,9 @@ export function StakeButton({
           }
         } else {
           // Standard flow for non-Phantom wallets
+          const transactionBytes = Buffer.from(wireTransaction, "base64");
+          const transactionDecoder = getTransactionDecoder();
+          const decodedTransaction = transactionDecoder.decode(transactionBytes);
           const finalTransaction = await partiallySignTransaction(
             [newAccount.keyPair],
             decodedTransaction
