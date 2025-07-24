@@ -11,12 +11,11 @@ import {
   Base64EncodedWireTransaction
 } from "@solana/kit";
 import { getCurrentChain } from "@/utils/config";
-import { createRpcConnection } from "@/utils/solana/rpc";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
 import { ErrorDialog } from "../ErrorDialog";
 import { StakeSuccessModal } from "./StakeSuccessModal";
 import Image from "next/image";
-import { VersionedTransaction, Keypair } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 
 // Helper function to detect Phantom wallet
 function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount): boolean {
@@ -113,34 +112,23 @@ export function StakeButton({
           isPhantom: isPhantomWallet(wallets, account)
         });
 
-        const newAccountKeypair = Keypair.fromSecretKey(new Uint8Array(await crypto.subtle.exportKey('raw', newAccount.keyPair.privateKey)));
-        
         let signature: string;
         
         if (isPhantomWallet(wallets, account)) {
           const phantomProvider = getPhantomProvider();
           if (phantomProvider && phantomProvider.signTransaction) {
             try {
-              //  修正版              
-              // 1. Phantom用に署名なしの新しいクリーンなトランザクションを作成
-
-              const cleanTransactionBytes = Buffer.from(wireTransaction, "base64");
-              const originalTransaction = VersionedTransaction.deserialize(cleanTransactionBytes);
-              const cleanTransaction = new VersionedTransaction(originalTransaction.message);
-              
-              // 2. Phantomで署名
-              const phantomSigned = await phantomProvider.signTransaction(cleanTransaction);
-              
-              // 3. 追加署名が必要なら後で追加
-              phantomSigned.sign([newAccountKeypair]);
-              
-              // 4. RPCで送信 (sendRawTransactionとして生のバイトを送信)
-              const rpc = createRpcConnection();
-              const serializedTransaction = Buffer.from(phantomSigned.serialize()).toString('base64');
-              const sig = await rpc.sendTransaction(serializedTransaction as Base64EncodedWireTransaction, {
-                skipPreflight: false,
-              }).send();
-              signature = sig;
+              // Use the standard flow with proper signing for Phantom
+              const transactionBytes = Buffer.from(wireTransaction, "base64");
+              const transactionDecoder = getTransactionDecoder();
+              const decodedTransaction = transactionDecoder.decode(transactionBytes);
+              const finalTransaction = await partiallySignTransaction(
+                [newAccount.keyPair],
+                decodedTransaction
+              );
+              const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
+              const rawSignature = rawSignatures[0];
+              signature = getBase58Decoder().decode(rawSignature);
               
             } catch (phantomError) {
               console.warn('Phantom signTransaction failed, falling back to standard flow:', phantomError);
