@@ -122,7 +122,7 @@ export function StakeButton({
           const phantomProvider = getPhantomProvider();
           if (phantomProvider && phantomProvider.signAndSendTransaction) {
             try {
-              // Step 1: 最初にPhantomだけで署名 (signAndSendTransactionを使用)
+              // Step 1: First sign with Phantom only (using signAndSendTransaction)
               const result = await phantomProvider.signAndSendTransaction(decodedTransaction);
               signature = result.signature;
             } catch (phantomError) {
