@@ -26,11 +26,18 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
+// Type definition for Phantom provider
+interface PhantomProvider {
+  isPhantom: boolean;
+  request: (params: { method: string; params: Record<string, unknown> }) => Promise<{ signature: Uint8Array; publicKey: string }>;
+  signTransaction: (transaction: unknown) => Promise<{ serialize: () => Uint8Array }>;
+}
+
 // Helper function to get the provider for message signing
-function getProvider() {
+function getProvider(): PhantomProvider {
   if (typeof window !== 'undefined' && 'solana' in window) {
-    const provider = (window as any).solana;
-    if (provider.isPhantom) {
+    const provider = (window as { solana?: PhantomProvider }).solana;
+    if (provider?.isPhantom) {
       return provider;
     }
   }
