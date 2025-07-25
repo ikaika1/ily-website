@@ -53,6 +53,18 @@ interface StakeMessageParams {
   priorityFeeMicroLamports?: number;
 }
 
+interface PhantomStakeMessageParams {
+  authority: Address;
+  newAccount: Address;
+  stakeLamports: number;
+  blockhashObject: Readonly<{
+    blockhash: Blockhash;
+    lastValidBlockHeight: bigint;
+  }>;
+  computeUnitLimit: number;
+  priorityFeeMicroLamports?: number;
+}
+
 function getStakeMessage({
   authority,
   authorityNoopSigner,
@@ -124,9 +136,81 @@ function getStakeMessage({
   );
 }
 
+function getPhantomStakeMessage({
+  authority,
+  newAccount,
+  stakeLamports,
+  blockhashObject,
+  computeUnitLimit,
+  priorityFeeMicroLamports = DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS
+}: PhantomStakeMessageParams) {
+  const authorityNoopSigner = createNoopSigner(authority);
+  const newAccountNoopSigner = createNoopSigner(newAccount);
+  
+  return pipe(
+    createTransactionMessage({ version: 0 }),
+    (msg) => setTransactionMessageFeePayer(authority, msg),
+    (msg) => setTransactionMessageLifetimeUsingBlockhash(blockhashObject, msg),
+    (msg) =>
+      prependTransactionMessageInstruction(
+        getSetComputeUnitLimitInstruction({ units: computeUnitLimit }),
+        msg
+      ),
+    (msg) =>
+      prependTransactionMessageInstruction(
+        getSetComputeUnitPriceInstruction({
+          microLamports: priorityFeeMicroLamports
+        }),
+        msg
+      ),
+    (msg) =>
+      appendTransactionMessageInstruction(
+        getCreateAccountInstruction({
+          payer: authorityNoopSigner,
+          newAccount: newAccountNoopSigner,
+          lamports: BigInt(stakeLamports),
+          space: STAKE_PROGRAM.STAKE_ACCOUNT_SPACE,
+          programAddress: STAKE_PROGRAM.ADDRESS
+        }),
+        msg
+      ),
+    (msg) =>
+      appendTransactionMessageInstruction(
+        getInitializeInstruction(
+          {
+            stake: newAccount,
+            rentSysvar: SYSVAR.RENT_ADDRESS,
+            authorized: {
+              staker: authority,
+              withdrawer: authority
+            },
+            lockup: STAKE_PROGRAM.DEFAULT_LOCKUP
+          },
+          { programAddress: STAKE_PROGRAM.ADDRESS }
+        ),
+        msg
+      ),
+    (msg) =>
+      appendTransactionMessageInstruction(
+        getDelegateStakeInstruction(
+          {
+            stake: newAccount,
+            vote: getValidatorAddress(),
+            clockSysvar: SYSVAR.CLOCK_ADDRESS,
+            stakeHistory: SYSVAR.STAKE_HISTORY_ADDRESS,
+            unused: STAKE_PROGRAM.CONFIG_ADDRESS,
+            stakeAuthority: authorityNoopSigner
+          },
+          { programAddress: STAKE_PROGRAM.ADDRESS }
+        ),
+        msg
+      )
+  );
+}
+
 export async function POST(request: Request) {
   try {
-    const { stakeLamports, stakerAddress, newAccountAddress } =
+    const { stakeLamports, stakerAddress, newAccountAddress, isPhantom } =
       await request.json();
 
     if (!stakeLamports) {
@@ -149,38 +233,81 @@ export async function POST(request: Request) {
 
     const rpc = createRpcConnection();
 
-    const authorityNoopSigner = createNoopSigner(authority);
-    const newAccountNoopSigner = createNoopSigner(newAccount);
-
-    const sampleMessage = getStakeMessage({
-      authority,
-      authorityNoopSigner,
-      newAccount,
-      newAccountNoopSigner,
-      stakeLamports,
-      blockhashObject: INVALID_BUT_SUFFICIENT_FOR_COMPILATION_BLOCKHASH,
-      computeUnitLimit: MAX_COMPUTE_UNIT_LIMIT
-    });
-
-    assertIsTransactionMessageWithBlockhashLifetime(sampleMessage);
-    const computeUnitEstimate =
-      await getComputeUnitEstimateForTransactionMessageFactory({ rpc })(
-        sampleMessage
-      );
-    console.log("computeUnitEstimate", computeUnitEstimate);
+    let message;
+    let computeUnitEstimate;
 
     const { value: latestBlockhash } = await rpc
       .getLatestBlockhash({ commitment: "confirmed" })
       .send();
-    const message = getStakeMessage({
-      authority,
-      authorityNoopSigner,
-      newAccount,
-      newAccountNoopSigner,
-      stakeLamports,
-      blockhashObject: latestBlockhash,
-      computeUnitLimit: computeUnitEstimate
-    });
+
+    if (isPhantom) {
+      // For Phantom: Create clean transaction without pre-signing
+      const sampleMessage = getPhantomStakeMessage({
+        authority,
+        newAccount,
+        stakeLamports,
+        blockhashObject: INVALID_BUT_SUFFICIENT_FOR_COMPILATION_BLOCKHASH,
+        computeUnitLimit: MAX_COMPUTE_UNIT_LIMIT
+      });
+
+      assertIsTransactionMessageWithBlockhashLifetime(sampleMessage);
+      try {
+        computeUnitEstimate =
+          await getComputeUnitEstimateForTransactionMessageFactory({ rpc })(
+            sampleMessage
+          );
+      } catch (estimationError: unknown) {
+        console.error("Failed to estimate compute units for Phantom transaction:", estimationError);
+        const errorMessage = estimationError instanceof Error ? estimationError.message : String(estimationError);
+        throw new Error(`Transaction simulation failed: ${errorMessage}`);
+      }
+
+      message = getPhantomStakeMessage({
+        authority,
+        newAccount,
+        stakeLamports,
+        blockhashObject: latestBlockhash,
+        computeUnitLimit: computeUnitEstimate
+      });
+    } else {
+      // Standard flow for other wallets
+      const authorityNoopSigner = createNoopSigner(authority);
+      const newAccountNoopSigner = createNoopSigner(newAccount);
+
+      const sampleMessage = getStakeMessage({
+        authority,
+        authorityNoopSigner,
+        newAccount,
+        newAccountNoopSigner,
+        stakeLamports,
+        blockhashObject: INVALID_BUT_SUFFICIENT_FOR_COMPILATION_BLOCKHASH,
+        computeUnitLimit: MAX_COMPUTE_UNIT_LIMIT
+      });
+
+      assertIsTransactionMessageWithBlockhashLifetime(sampleMessage);
+      try {
+        computeUnitEstimate =
+          await getComputeUnitEstimateForTransactionMessageFactory({ rpc })(
+            sampleMessage
+          );
+      } catch (estimationError: unknown) {
+        console.error("Failed to estimate compute units for standard transaction:", estimationError);
+        const errorMessage = estimationError instanceof Error ? estimationError.message : String(estimationError);
+        throw new Error(`Transaction simulation failed: ${errorMessage}`);
+      }
+
+      message = getStakeMessage({
+        authority,
+        authorityNoopSigner,
+        newAccount,
+        newAccountNoopSigner,
+        stakeLamports,
+        blockhashObject: latestBlockhash,
+        computeUnitLimit: computeUnitEstimate
+      });
+    }
+
+    console.log("computeUnitEstimate", computeUnitEstimate);
 
     assertIsTransactionMessageWithBlockhashLifetime(message);
 

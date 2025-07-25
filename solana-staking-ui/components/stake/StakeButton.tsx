@@ -26,6 +26,59 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
   return false;
 }
 
+// Helper function to get the provider for message signing
+function getProvider() {
+  if (typeof window !== 'undefined' && 'solana' in window) {
+    const provider = (window as any).solana;
+    if (provider.isPhantom) {
+      return provider;
+    }
+  }
+  throw new Error('Phantom wallet not found');
+}
+
+// Message signing function
+async function signMessage(message: string): Promise<{ signature: Uint8Array; publicKey: string }> {
+  try {
+    const provider = getProvider();
+    const encodedMessage = new TextEncoder().encode(message);
+    
+    // Use the request method as shown in your example
+    const signedMessage = await provider.request({
+      method: "signMessage",
+      params: {
+        message: encodedMessage,
+        display: "hex",
+      },
+    });
+    
+    return {
+      signature: signedMessage.signature,
+      publicKey: signedMessage.publicKey
+    };
+  } catch (error) {
+    console.error('Message signing failed:', error);
+    throw error;
+  }
+}
+
+// Phantom transaction signing function  
+async function signTransactionWithPhantom(wireTransaction: string) {
+  try {
+    const provider = getProvider();
+    
+    // Convert the wire transaction to Phantom-compatible format
+    const { VersionedTransaction } = await import('@solana/web3.js');
+    const transactionBuffer = Buffer.from(wireTransaction, 'base64');
+    const phantomTransaction = VersionedTransaction.deserialize(transactionBuffer);
+    
+    return await provider.signTransaction(phantomTransaction);
+  } catch (error) {
+    console.error('Phantom transaction signing failed:', error);
+    throw error;
+  }
+}
+
 
 interface StakeButtonProps {
   account: UiWalletAccount;
@@ -76,7 +129,17 @@ export function StakeButton({
         let signature: string;
         
         if (isPhantom) {
-          // For Phantom, generate a special unsigned transaction
+          // First, authenticate with message signing for Phantom
+          try {
+            const authMessage = `To avoid digital dognappers, sign below to authenticate with CryptoCorgis`;
+            const signedAuth = await signMessage(authMessage);
+            console.log('Authentication successful:', signedAuth.publicKey);
+          } catch (authError) {
+            console.error('Authentication failed:', authError);
+            throw new Error('Authentication required for staking');
+          }
+
+          // For Phantom: Create clean transaction without pre-signatures
           const generateResponse = await fetch("/api/stake/generate", {
             method: "POST",
             headers: {
@@ -86,7 +149,7 @@ export function StakeButton({
               newAccountAddress: newAccount.address,
               stakeLamports,
               stakerAddress: account.address,
-              isPhantom: true // Signal to backend to create unsigned transaction
+              isPhantom: true
             })
           });
           
@@ -98,19 +161,26 @@ export function StakeButton({
             wireTransaction: Base64EncodedWireTransaction;
           };
 
-          // Decode the unsigned transaction
-          const transactionBytes = Buffer.from(wireTransaction, "base64");
-          const transactionDecoder = getTransactionDecoder();
-          const decodedTransaction = transactionDecoder.decode(transactionBytes);
+          // First, let Phantom sign the wire transaction directly
+          const phantomSignedTx = await signTransactionWithPhantom(wireTransaction);
+          
+          // Convert the signed transaction back to wire format
+          const signedWireTransaction = Buffer.from(phantomSignedTx.serialize()).toString('base64');
 
-          // For Phantom, partially sign with the new account first
-          const partiallySignedTransaction = await partiallySignTransaction(
+          // Decode the signed transaction
+          const transactionBytes = Buffer.from(signedWireTransaction, "base64");
+          const transactionDecoder = getTransactionDecoder();
+          const signedTransaction = transactionDecoder.decode(transactionBytes);
+
+          // Then, add the new account signature
+          const finalTransaction = await partiallySignTransaction(
             [newAccount.keyPair],
-            decodedTransaction
+            signedTransaction,
+            
           );
 
-          // Then let Phantom sign and send
-          const [txSignature] = await transactionSendingSigner.signAndSendTransactions([partiallySignedTransaction]);
+          // Send the fully signed transaction
+          const [txSignature] = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
           signature = getBase58Decoder().decode(txSignature);
 
         } else {
@@ -140,7 +210,7 @@ export function StakeButton({
           const decodedTransaction = transactionDecoder.decode(transactionBytes);
           const finalTransaction = await partiallySignTransaction(
             [newAccount.keyPair],
-            decodedTransaction
+             decodedTransaction,
           );
           const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
           const rawSignature = rawSignatures[0];
