@@ -10,6 +10,7 @@ import {
   partiallySignTransaction,
   Base64EncodedWireTransaction
 } from "@solana/kit";
+import { VersionedTransaction, Connection } from "@solana/web3.js";
 import { getCurrentChain } from "@/utils/config";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
 import { ErrorDialog } from "../ErrorDialog";
@@ -29,8 +30,9 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
 // Type definition for Phantom provider
 interface PhantomProvider {
   isPhantom: boolean;
-  request: (params: { method: string; params: Record<string, unknown> }) => Promise<{ signature: Uint8Array; publicKey: string }>;
+  request: (params: { method: string; params: Record<string, unknown> }) => Promise<{ signature: string }>;
   signTransaction: (transaction: unknown) => Promise<{ serialize: () => Uint8Array }>;
+  signAndSendTransaction: (transaction: unknown) => Promise<{ signature: string }>;
 }
 
 // Singleton pattern to cache Phantom provider
@@ -53,42 +55,25 @@ function getProvider(): PhantomProvider {
   throw new Error('Phantom wallet not found');
 }
 
-// Message signing function
-async function signMessage(message: string): Promise<{ signature: Uint8Array; publicKey: string }> {
-  try {
-    const provider = getProvider();
-    const encodedMessage = new TextEncoder().encode(message);
-    
-    // Use the request method as shown in your example
-    const signedMessage = await provider.request({
-      method: "signMessage",
-      params: {
-        message: encodedMessage,
-        display: "hex",
-      },
-    });
-    
-    return {
-      signature: signedMessage.signature,
-      publicKey: signedMessage.publicKey
-    };
-  } catch (error) {
-    console.error('Message signing failed:', error);
-    throw error;
-  }
-}
+
 
 // Phantom transaction signing function  
-async function signTransactionWithPhantom(wireTransaction: string) {
+async function signTransactionWithPhantom(wireTransaction: string): Promise<string> {
   try {
     const provider = getProvider();
+    const network = process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!;
+    const connection = new Connection(network);
     
-    // Convert the wire transaction to Phantom-compatible format
-    const { VersionedTransaction } = await import('@solana/web3.js');
-    const transactionBuffer = Buffer.from(wireTransaction, 'base64');
-    const phantomTransaction = VersionedTransaction.deserialize(transactionBuffer);
+    // Decode the wire transaction to VersionedTransaction
+    const transactionBytes = Buffer.from(wireTransaction, "base64");
+    const transaction = VersionedTransaction.deserialize(transactionBytes);
     
-    return await provider.signTransaction(phantomTransaction);
+    // Use Phantom's signAndSendTransaction with the full transaction
+    const { signature } = await provider.signAndSendTransaction(transaction);
+    
+    // Wait for confirmation
+    await connection.getSignatureStatus(signature);
+    return signature;
   } catch (error) {
     console.error('Phantom transaction signing failed:', error);
     throw error;
@@ -167,27 +152,12 @@ export function StakeButton({
             wireTransaction: Base64EncodedWireTransaction;
           };
 
-          // First, let Phantom sign the wire transaction directly
-          const phantomSignedTx = await signTransactionWithPhantom(wireTransaction);
+          // Use Phantom's signAndSendTransaction to handle the entire process
+          signature = await signTransactionWithPhantom(wireTransaction);
           
-          // Convert the signed transaction back to wire format
-          const signedWireTransaction = Buffer.from(phantomSignedTx.serialize()).toString('base64');
-
-          // Decode the signed transaction
-          const transactionBytes = Buffer.from(signedWireTransaction, "base64");
-          const transactionDecoder = getTransactionDecoder();
-          const signedTransaction = transactionDecoder.decode(transactionBytes);
-
-          // Then, add the new account signature
-          const finalTransaction = await partiallySignTransaction(
-            [newAccount.keyPair],
-            signedTransaction,
-            
-          );
-
-          // Send the fully signed transaction
-          const [txSignature] = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
-          signature = getBase58Decoder().decode(txSignature);
+          // Skip API confirmation since Phantom already sent the transaction
+          setLastSignature(signature);
+          return;
 
         } else {
           // Standard flow for non-Phantom wallets
