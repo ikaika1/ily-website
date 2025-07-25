@@ -33,11 +33,20 @@ interface PhantomProvider {
   signTransaction: (transaction: unknown) => Promise<{ serialize: () => Uint8Array }>;
 }
 
+// Singleton pattern to cache Phantom provider
+let cachedProvider: PhantomProvider | null = null;
+
 // Helper function to get the provider for message signing
 function getProvider(): PhantomProvider {
+  // Return cached provider if available
+  if (cachedProvider) {
+    return cachedProvider;
+  }
+
   if (typeof window !== 'undefined' && 'solana' in window) {
     const provider = (window as { solana?: PhantomProvider }).solana;
     if (provider?.isPhantom) {
+      cachedProvider = provider; // Cache the provider
       return provider;
     }
   }
@@ -136,16 +145,6 @@ export function StakeButton({
         let signature: string;
         
         if (isPhantom) {
-          // First, authenticate with message signing for Phantom
-          try {
-            const authMessage = `To avoid digital dognappers, sign below to authenticate with CryptoCorgis`;
-            const signedAuth = await signMessage(authMessage);
-            console.log('Authentication successful:', signedAuth.publicKey);
-          } catch (authError) {
-            console.error('Authentication failed:', authError);
-            throw new Error('Authentication required for staking');
-          }
-
           // For Phantom: Create clean transaction without pre-signatures
           const generateResponse = await fetch("/api/stake/generate", {
             method: "POST",
