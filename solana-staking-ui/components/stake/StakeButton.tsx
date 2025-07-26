@@ -57,7 +57,7 @@ async function handlePhantomLighthouseSigning(
 ): Promise<string> {
   try {
     const provider = getProvider();
-    const network = process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!;
+    const network = process.env.MAINNET_RPC_ENDPOINT!;
     const connection = new Connection(network);
 
     // 1. Deserialize the unsigned transaction from backend
