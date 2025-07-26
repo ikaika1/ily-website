@@ -210,8 +210,11 @@ function getPhantomStakeMessage({
 
 export async function POST(request: Request) {
   try {
+    console.log("🚀 API /stake/generate called");
     const { stakeLamports, stakerAddress, newAccountAddress, isPhantom } =
       await request.json();
+    
+    console.log("📥 Request data:", { stakeLamports, stakerAddress, newAccountAddress, isPhantom });
 
     if (!stakeLamports) {
       return NextResponse.json(
@@ -242,6 +245,14 @@ export async function POST(request: Request) {
 
     if (isPhantom) {
       // For Phantom: Create clean transaction without pre-signing
+      console.log("🔄 Creating Phantom transaction for:", {
+        authority: authority.toString(),
+        newAccount: newAccount.toString(),
+        stakeLamports,
+        receivedNewAccountAddress: newAccountAddress,
+        addressesMatch: newAccount.toString() === newAccountAddress
+      });
+
       const sampleMessage = getPhantomStakeMessage({
         authority,
         newAccount,

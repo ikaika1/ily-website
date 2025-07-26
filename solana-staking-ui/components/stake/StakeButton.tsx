@@ -3,14 +3,9 @@ import { LockClosedIcon } from "@radix-ui/react-icons";
 import { useCallback, useRef, useState } from "react";
 import { UiWalletAccount, useWallets } from "@wallet-standard/react";
 import { useWalletAccountTransactionSendingSigner } from "@solana/react";
-import {
-  generateKeyPairSigner,
-  getBase58Decoder,
-  getTransactionDecoder,
-  partiallySignTransaction,
-  Base64EncodedWireTransaction
-} from "@solana/kit";
-import { VersionedTransaction, Connection } from "@solana/web3.js";
+import { VersionedTransaction, Connection, Keypair } from "@solana/web3.js";
+import * as bs58 from "bs58";
+import * as nacl from "tweetnacl"; // Using tweetnacl for manual signing
 import { getCurrentChain } from "@/utils/config";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
 import { ErrorDialog } from "../ErrorDialog";
@@ -20,7 +15,7 @@ import Image from "next/image";
 // Helper function to detect Phantom wallet
 function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWallet[], account: UiWalletAccount): boolean {
   for (const wallet of wallets) {
-    if (wallet.accounts.some(acc => acc.address === account.address)) {
+    if (wallet.accounts.some((acc: UiWalletAccount) => acc.address === account.address)) {
       return wallet.name.toLowerCase().includes('phantom');
     }
   }
@@ -31,7 +26,7 @@ function isPhantomWallet(wallets: readonly import("@wallet-standard/react").UiWa
 interface PhantomProvider {
   isPhantom: boolean;
   request: (params: { method: string; params: Record<string, unknown> }) => Promise<{ signature: string }>;
-  signTransaction: (transaction: unknown) => Promise<{ serialize: () => Uint8Array }>;
+  signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
   signAndSendTransaction: (transaction: unknown) => Promise<{ signature: string }>;
 }
 
@@ -56,26 +51,61 @@ function getProvider(): PhantomProvider {
 }
 
 
-
-// Phantom transaction signing function  
-async function signTransactionWithPhantom(wireTransaction: string): Promise<string> {
+// Phantom Lighthouse compliant signing function
+async function handlePhantomLighthouseSigning(
+  wireTransaction: string,
+  newAccount: { address: string; keyPair: Keypair }
+): Promise<string> {
   try {
     const provider = getProvider();
     const network = process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!;
     const connection = new Connection(network);
+
+    // 1. Deserialize the unsigned transaction from backend
+    const transaction = VersionedTransaction.deserialize(
+      new Uint8Array(Buffer.from(wireTransaction, "base64"))
+    );
+
+    // 2. ★CRITICAL: Phantom signs first (Lighthouse requirement)
+    const signedByPhantomTx = await provider.signTransaction(transaction);
+
+    // 3. Validate that newAccount is expected as a signer
+    const accountKeysArray = signedByPhantomTx.message.staticAccountKeys.map(key => key.toString());
+    const newAccountIndex = accountKeysArray.indexOf(newAccount.address);
     
-    // Decode the wire transaction to VersionedTransaction
-    const transactionBytes = Buffer.from(wireTransaction, "base64");
-    const transaction = VersionedTransaction.deserialize(transactionBytes);
+    if (newAccountIndex < 0 || newAccountIndex >= signedByPhantomTx.message.header.numRequiredSignatures) {
+      throw new Error(`newAccount ${newAccount.address} is not a required signer.`);
+    }
+
+    // 4. ★MANUAL SIGNING: Add newAccount signature manually using tweetnacl
+    const messageBytes = signedByPhantomTx.message.serialize();
     
-    // Use Phantom's signAndSendTransaction with the full transaction
-    const { signature } = await provider.signAndSendTransaction(transaction);
+    // Use tweetnacl to sign the message bytes with the keypair's secret key
+    const newAccountSignature = nacl.sign.detached(
+      new Uint8Array(messageBytes),
+      newAccount.keyPair.secretKey // CORRECT: Use the secretKey property
+    );
     
-    // Wait for confirmation
-    await connection.getSignatureStatus(signature);
-    return signature;
+    // CORRECT: Directly modify the signatures array of the transaction returned by Phantom.
+    signedByPhantomTx.signatures[newAccountIndex] = newAccountSignature;
+
+    // 5. Serialize the fully signed transaction
+    const rawTransaction = signedByPhantomTx.serialize();
+
+    // 6. dApp sends the completed transaction to network
+    const txSignature = await connection.sendRawTransaction(rawTransaction, {
+      skipPreflight: true,
+    });
+
+    // 7. Wait for transaction confirmation
+    await connection.confirmTransaction({
+      signature: txSignature,
+      ...(await connection.getLatestBlockhash())
+    }, "processed");
+
+    return txSignature;
   } catch (error) {
-    console.error('Phantom transaction signing failed:', error);
+    console.error('Phantom Lighthouse signing process failed:', error);
     throw error;
   }
 }
@@ -118,7 +148,11 @@ export function StakeButton({
       setLastSignature(undefined);
       setLastStakeAccount(undefined);
       try {
-        const newAccount = await generateKeyPairSigner();
+        const newAccountKeypair = Keypair.generate();
+        const newAccount = {
+          address: newAccountKeypair.publicKey.toString(),
+          keyPair: newAccountKeypair
+        };
         setLastStakeAccount(newAccount.address);
         // Convert SOL to lamports
         const stakeLamports = Math.floor(
@@ -126,71 +160,42 @@ export function StakeButton({
         );
 
         const isPhantom = isPhantomWallet(wallets, account);
+        
+        const payload = {
+            newAccountAddress: newAccount.address,
+            stakeLamports,
+            stakerAddress: account.address,
+        };
+
+        const generateResponse = await fetch("/api/stake/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!generateResponse.ok) {
+            const errorText = await generateResponse.text();
+            throw new Error(`Failed to generate transaction: ${errorText}`);
+        }
+        
+        const { wireTransaction } = (await generateResponse.json()) as {
+            wireTransaction: string;
+        };
 
         let signature: string;
-        
+
         if (isPhantom) {
-          // For Phantom: Create clean transaction without pre-signatures
-          const generateResponse = await fetch("/api/stake/generate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              newAccountAddress: newAccount.address,
-              stakeLamports,
-              stakerAddress: account.address,
-              isPhantom: true
-            })
-          });
+          // Use Lighthouse compliant signing: Phantom first, then dApp keypair manually
+          signature = await handlePhantomLighthouseSigning(wireTransaction, newAccount);
           
-          if (!generateResponse.ok) {
-            throw new Error("Failed to generate transaction");
-          }
-          
-          const { wireTransaction } = (await generateResponse.json()) as {
-            wireTransaction: Base64EncodedWireTransaction;
-          };
-
-          // Use Phantom's signAndSendTransaction to handle the entire process
-          signature = await signTransactionWithPhantom(wireTransaction);
-          
-          // Skip API confirmation since Phantom already sent the transaction
-          setLastSignature(signature);
-          return;
-
         } else {
           // Standard flow for non-Phantom wallets
-          const generateResponse = await fetch("/api/stake/generate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              newAccountAddress: newAccount.address,
-              stakeLamports,
-              stakerAddress: account.address
-            })
-          });
-          
-          if (!generateResponse.ok) {
-            throw new Error("Failed to generate transaction");
-          }
-          
-          const { wireTransaction } = (await generateResponse.json()) as {
-            wireTransaction: Base64EncodedWireTransaction;
-          };
-
-          const transactionBytes = Buffer.from(wireTransaction, "base64");
-          const transactionDecoder = getTransactionDecoder();
-          const decodedTransaction = transactionDecoder.decode(transactionBytes);
-          const finalTransaction = await partiallySignTransaction(
-            [newAccount.keyPair],
-             decodedTransaction,
-          );
-          const rawSignatures = await transactionSendingSigner.signAndSendTransactions([finalTransaction]);
+          const transaction = VersionedTransaction.deserialize(new Uint8Array(Buffer.from(wireTransaction, "base64")));
+          // CORRECT: transaction.sign takes an array of Keypair objects
+          transaction.sign([newAccount.keyPair]);
+          const rawSignatures = await transactionSendingSigner.signAndSendTransactions([transaction]);
           const rawSignature = rawSignatures[0];
-          signature = getBase58Decoder().decode(rawSignature);
+          signature = bs58.encode(rawSignature);
         }
 
         // Call the confirmation API endpoint
@@ -325,7 +330,9 @@ export function StakeButton({
                     width={48}
                     height={48}
                     style={{
-                      animation: "spin 3s linear infinite"
+                      animation: "spin 3s linear infinite",
+                      width: "48px",
+                      height: "48px"
                     }}
                   />
                 </div>
@@ -340,9 +347,11 @@ export function StakeButton({
               >
                 Staking your SOL...
               </Dialog.Title>
-              <Text size="2" color="gray" style={{ marginTop: "-8px" }}>
-                Please wait while we process your stake transaction...
-              </Text>
+              <Dialog.Description>
+                <Text size="2" color="gray" style={{ marginTop: "-8px" }}>
+                  Please wait while we process your stake transaction...
+                </Text>
+              </Dialog.Description>
             </Flex>
           </Flex>
         </Dialog.Content>
@@ -363,7 +372,7 @@ export function StakeButton({
         />
       )}
 
-      <style jsx global>{`
+      <style>{`
         @keyframes spin {
           from {
             transform: rotate(0deg);
