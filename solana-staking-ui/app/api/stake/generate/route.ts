@@ -13,7 +13,6 @@ import {
   getBase64EncodedWireTransaction,
   prependTransactionMessageInstruction,
   getComputeUnitEstimateForTransactionMessageFactory,
-  compressTransactionMessageUsingAddressLookupTables,
   type Address,
   type TransactionSigner,
   type Blockhash
@@ -36,7 +35,6 @@ import {
   getSetComputeUnitPriceInstruction
 } from "@solana-program/compute-budget";
 import { getValidatorAddress } from "@/utils/config";
-import { getStakeLookupTables, shouldOptimizeTransactionSize } from "@/utils/solana/lookup-tables";
 import { shouldSplitTransaction } from "@/utils/solana/transaction-splitting";
 
 interface StakeMessageParams {
@@ -322,32 +320,12 @@ export async function POST(request: Request) {
 
     assertIsTransactionMessageWithBlockhashLifetime(message);
 
-    // Check if we need to optimize transaction size using lookup tables
-    const compiledTransaction = compileTransaction(message);
-    const initialWireTransaction = getBase64EncodedWireTransaction(compiledTransaction);
-    
-    // Calculate transaction size (base64 encoded size approximation)
-    const transactionSize = initialWireTransaction.length * 0.75; // Rough conversion from base64 to bytes
-    
-    let finalMessage = message;
-    if (shouldOptimizeTransactionSize(transactionSize)) {
-      try {
-        const lookupTables = await getStakeLookupTables(rpc, getValidatorAddress());
-        if (Object.keys(lookupTables).length > 0) {
-          finalMessage = compressTransactionMessageUsingAddressLookupTables(
-            message,
-            lookupTables
-          );
-          console.log("Transaction optimized with lookup tables");
-        }
-      } catch (error) {
-        console.warn("Failed to optimize transaction with lookup tables:", error);
-        // Continue with original message if lookup table optimization fails
-      }
-    }
-
-    const finalCompiledTransaction = compileTransaction(finalMessage);
+    // Use the message directly without lookup table optimization
+    const finalCompiledTransaction = compileTransaction(message);
     const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
+
+    // Calculate transaction size (base64 encoded size approximation)
+    const transactionSize = wireTransaction.length * 0.75; // Rough conversion from base64 to bytes
 
     // Check if transaction splitting might be needed for future optimization
     const needsSplitting = shouldSplitTransaction(computeUnitEstimate);

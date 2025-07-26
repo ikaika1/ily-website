@@ -4,7 +4,6 @@ import { useCallback, useRef, useState } from "react";
 import { UiWalletAccount, useWallets } from "@wallet-standard/react";
 import { useWalletAccountTransactionSendingSigner } from "@solana/react";
 import { VersionedTransaction, Connection, Keypair } from "@solana/web3.js";
-import * as bs58 from "bs58";
 import * as nacl from "tweetnacl"; // Using tweetnacl for manual signing
 import { getCurrentChain } from "@/utils/config";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
@@ -193,9 +192,15 @@ export function StakeButton({
           const transaction = VersionedTransaction.deserialize(new Uint8Array(Buffer.from(wireTransaction, "base64")));
           // CORRECT: transaction.sign takes an array of Keypair objects
           transaction.sign([newAccount.keyPair]);
-          const rawSignatures = await transactionSendingSigner.signAndSendTransactions([transaction]);
-          const rawSignature = rawSignatures[0];
-          signature = bs58.encode(rawSignature);
+          
+          // Use direct connection to send the transaction instead of the problematic signAndSendTransactions
+          const networkEnv = process.env.NEXT_PUBLIC_NETWORK_ENV?.toLowerCase() || "devnet";
+          const rpcEndpoint = networkEnv === "mainnet" 
+            ? process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!
+            : process.env.NEXT_PUBLIC_DEVNET_RPC_ENDPOINT!;
+          const connection = new Connection(rpcEndpoint);
+          const txSignature = await connection.sendTransaction(transaction);
+          signature = txSignature;
         }
 
         // Call the confirmation API endpoint
