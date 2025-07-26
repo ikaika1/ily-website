@@ -57,7 +57,7 @@ async function handlePhantomLighthouseSigning(
 ): Promise<string> {
   try {
     const provider = getProvider();
-    const network = process.env.MAINNET_RPC_ENDPOINT!;
+    const network = process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!;
     const connection = new Connection(network);
 
     // 1. Deserialize the unsigned transaction from backend
@@ -196,7 +196,7 @@ export function StakeButton({
           // Use direct connection to send the transaction instead of the problematic signAndSendTransactions
           const networkEnv = process.env.NEXT_PUBLIC_NETWORK_ENV?.toLowerCase() || "devnet";
           const rpcEndpoint = networkEnv === "mainnet" 
-            ? process.env.MAINNET_RPC_ENDPOINT!
+            ? process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!
             : process.env.DEVNET_RPC_ENDPOINT!;
           const connection = new Connection(rpcEndpoint);
           const txSignature = await connection.sendTransaction(transaction);
