@@ -196,8 +196,8 @@ export function StakeButton({
           // Use direct connection to send the transaction instead of the problematic signAndSendTransactions
           const networkEnv = process.env.NEXT_PUBLIC_NETWORK_ENV?.toLowerCase() || "devnet";
           const rpcEndpoint = networkEnv === "mainnet" 
-            ? process.env.NEXT_PUBLIC_MAINNET_RPC_ENDPOINT!
-            : process.env.NEXT_PUBLIC_DEVNET_RPC_ENDPOINT!;
+            ? process.env.MAINNET_RPC_ENDPOINT!
+            : process.env.DEVNET_RPC_ENDPOINT!;
           const connection = new Connection(rpcEndpoint);
           const txSignature = await connection.sendTransaction(transaction);
           signature = txSignature;
