@@ -94,6 +94,20 @@ interface PhantomProvider {
   ) => Promise<{ signature: string }>;
 }
 
+// Type definition for wallet providers
+interface WalletProvider {
+  signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction>;
+  isPhantom?: boolean;
+  isBackpack?: boolean;
+}
+
+// Type definition for window with wallet providers
+interface WindowWithWallets extends Window {
+  solana?: WalletProvider;
+  solflare?: WalletProvider;
+  backpack?: WalletProvider;
+}
+
 // Singleton pattern to cache Phantom provider
 let cachedProvider: PhantomProvider | null = null;
 
@@ -115,17 +129,19 @@ function getProvider(): PhantomProvider {
 }
 
 // Helper function to get Solflare provider
-function getSolflareProvider(): { signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction> } {
-  if (typeof window !== "undefined" && "solflare" in window) {
-    const provider = (window as any).solflare;
+function getSolflareProvider(): WalletProvider {
+  const windowWithWallets = window as unknown as WindowWithWallets;
+  
+  if (typeof window !== "undefined" && windowWithWallets.solflare) {
+    const provider = windowWithWallets.solflare;
     if (provider && typeof provider.signTransaction === 'function') {
       return provider;
     }
   }
   
   // Try to get Solflare through the standard solana provider
-  if (typeof window !== "undefined" && "solana" in window) {
-    const provider = (window as any).solana;
+  if (typeof window !== "undefined" && windowWithWallets.solana) {
+    const provider = windowWithWallets.solana;
     if (provider && !provider.isPhantom && typeof provider.signTransaction === 'function') {
       return provider;
     }
@@ -135,20 +151,22 @@ function getSolflareProvider(): { signTransaction: (transaction: VersionedTransa
 }
 
 // Helper function to get Backpack provider
-function getBackpackProvider(): { signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction> } {
-  if (typeof window !== "undefined" && "backpack" in window) {
-    const provider = (window as any).backpack;
+function getBackpackProvider(): WalletProvider {
+  const windowWithWallets = window as unknown as WindowWithWallets;
+  
+  if (typeof window !== "undefined" && windowWithWallets.backpack) {
+    const provider = windowWithWallets.backpack;
     if (provider && typeof provider.signTransaction === 'function') {
       return provider;
     }
   }
   
   // Try to get Backpack through the standard solana provider
-  if (typeof window !== "undefined" && "solana" in window) {
-    const provider = (window as any).solana;
+  if (typeof window !== "undefined" && windowWithWallets.solana) {
+    const provider = windowWithWallets.solana;
     if (provider && !provider.isPhantom && typeof provider.signTransaction === 'function') {
       // Additional check for Backpack-specific properties
-      if (provider.isBackpack || (window as any).backpack) {
+      if (provider.isBackpack || windowWithWallets.backpack) {
         return provider;
       }
     }
@@ -158,9 +176,11 @@ function getBackpackProvider(): { signTransaction: (transaction: VersionedTransa
 }
 
 // Generic provider getter for non-Phantom wallets
-function getGenericWalletProvider(): { signTransaction: (transaction: VersionedTransaction) => Promise<VersionedTransaction> } {
-  if (typeof window !== "undefined" && "solana" in window) {
-    const provider = (window as any).solana;
+function getGenericWalletProvider(): WalletProvider {
+  const windowWithWallets = window as unknown as WindowWithWallets;
+  
+  if (typeof window !== "undefined" && windowWithWallets.solana) {
+    const provider = windowWithWallets.solana;
     if (provider && !provider.isPhantom && typeof provider.signTransaction === 'function') {
       return provider;
     }
@@ -192,8 +212,9 @@ async function handlePhantomLighthouseSigning(
     let signedByPhantomTx;
     try {
       signedByPhantomTx = await provider.signTransaction(transaction);
-    } catch (error: any) {
-      if (error.message?.includes('rejected') || error.message?.includes('User rejected')) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('rejected') || errorMessage.includes('User rejected')) {
         throw new Error('Transaction cancelled by user');
       }
       throw error;
@@ -431,13 +452,14 @@ export function StakeButton({
         }
 
         setLastSignature(signature);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Staking error:", error);
         
         // Handle specific error cases with user-friendly messages
-        if (error.message?.includes('Transaction cancelled by user') || 
-            error.message?.includes('User rejected') ||
-            error.message?.includes('rejected')) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('Transaction cancelled by user') || 
+            errorMessage.includes('User rejected') ||
+            errorMessage.includes('rejected')) {
           // Don't show error dialog for user cancellation - just reset state
           console.log('User cancelled transaction');
         } else {
