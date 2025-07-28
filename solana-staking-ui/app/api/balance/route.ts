@@ -5,7 +5,6 @@ import { createRpcConnection } from "@/utils/solana/rpc";
 import { address } from "@solana/kit";
 import { LAMPORTS_PER_SOL } from "@/utils/constants";
 
-
 /**
  * Get the balance of a wallet address
  * @param request - The request object

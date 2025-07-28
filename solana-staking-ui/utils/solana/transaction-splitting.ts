@@ -10,8 +10,14 @@ import {
   type Blockhash,
   type IInstruction
 } from "@solana/kit";
-import { getSetComputeUnitLimitInstruction, getSetComputeUnitPriceInstruction } from "@solana-program/compute-budget";
-import { MAX_COMPUTE_UNIT_LIMIT, DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS } from "@/utils/constants";
+import {
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction
+} from "@solana-program/compute-budget";
+import {
+  MAX_COMPUTE_UNIT_LIMIT,
+  DEFAULT_PRIORITY_FEE_MICRO_LAMPORTS
+} from "@/utils/constants";
 
 interface TransactionSplitParams {
   instructions: IInstruction<string, any>[];
@@ -39,30 +45,34 @@ export function splitTransactionIfNeeded({
   // Estimate CU usage per instruction (rough estimate)
   const estimatedCUPerInstruction = 50000; // Conservative estimate
   const totalEstimatedCU = instructions.length * estimatedCUPerInstruction;
-  
+
   // If transaction fits within CU limit, return single transaction
   if (totalEstimatedCU <= maxComputeUnitsPerTx) {
-    return [{
-      message: createTransactionMessageWithInstructions({
-        instructions,
-        feePayer,
-        feePayerSigner,
-        blockhashObject,
-        computeUnitLimit: totalEstimatedCU,
-        priorityFeeMicroLamports
-      }),
-      estimatedCU: totalEstimatedCU
-    }];
+    return [
+      {
+        message: createTransactionMessageWithInstructions({
+          instructions,
+          feePayer,
+          feePayerSigner,
+          blockhashObject,
+          computeUnitLimit: totalEstimatedCU,
+          priorityFeeMicroLamports
+        }),
+        estimatedCU: totalEstimatedCU
+      }
+    ];
   }
-  
+
   // Split instructions into multiple transactions
-  const maxInstructionsPerTx = Math.floor(maxComputeUnitsPerTx / estimatedCUPerInstruction);
+  const maxInstructionsPerTx = Math.floor(
+    maxComputeUnitsPerTx / estimatedCUPerInstruction
+  );
   const transactions = [];
-  
+
   for (let i = 0; i < instructions.length; i += maxInstructionsPerTx) {
     const txInstructions = instructions.slice(i, i + maxInstructionsPerTx);
     const estimatedCU = txInstructions.length * estimatedCUPerInstruction;
-    
+
     transactions.push({
       message: createTransactionMessageWithInstructions({
         instructions: txInstructions,
@@ -75,7 +85,7 @@ export function splitTransactionIfNeeded({
       estimatedCU
     });
   }
-  
+
   return transactions;
 }
 
@@ -103,14 +113,18 @@ function createTransactionMessageWithInstructions({
     createTransactionMessage({ version: 0 }),
     (msg) => setTransactionMessageFeePayer(feePayer, msg),
     (msg) => setTransactionMessageLifetimeUsingBlockhash(blockhashObject, msg),
-    (msg) => prependTransactionMessageInstruction(
-      getSetComputeUnitLimitInstruction({ units: computeUnitLimit }),
-      msg
-    ),
-    (msg) => prependTransactionMessageInstruction(
-      getSetComputeUnitPriceInstruction({ microLamports: priorityFeeMicroLamports }),
-      msg
-    )
+    (msg) =>
+      prependTransactionMessageInstruction(
+        getSetComputeUnitLimitInstruction({ units: computeUnitLimit }),
+        msg
+      ),
+    (msg) =>
+      prependTransactionMessageInstruction(
+        getSetComputeUnitPriceInstruction({
+          microLamports: priorityFeeMicroLamports
+        }),
+        msg
+      )
   );
 }
 

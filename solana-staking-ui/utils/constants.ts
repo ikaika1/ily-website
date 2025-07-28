@@ -43,5 +43,5 @@ export const COMMON_LOOKUP_TABLES = [
   address("SysvarRent111111111111111111111111111111111"), // Rent sysvar
   address("SysvarStakeHistory1111111111111111111111111"), // Stake history sysvar
   address("StakeConfig11111111111111111111111111111111"), // Stake config
-  STAKE_PROGRAM_ADDRESS, // Stake program
+  STAKE_PROGRAM_ADDRESS // Stake program
 ] as const;

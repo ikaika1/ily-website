@@ -157,11 +157,17 @@ interface ConnectWalletDialogProps {
 function ConnectWalletDialog({ onAccountSelect }: ConnectWalletDialogProps) {
   const wallets = useWallets();
 
+  // Supported wallets - only show Phantom, Solflare, and Backpack
+  const supportedWalletNames = ['phantom', 'solflare', 'backpack'];
+  
   const connectableWallets = wallets
     .filter(
       (wallet: UiWallet) =>
         wallet.features.includes(StandardConnect) &&
-        wallet.features.includes(StandardDisconnect)
+        wallet.features.includes(StandardDisconnect) &&
+        supportedWalletNames.some(name => 
+          wallet.name.toLowerCase().includes(name.toLowerCase())
+        )
     )
     .reduce((unique: UiWallet[], wallet: UiWallet) => {
       const exists = unique.find((w) => w.name === wallet.name);
@@ -175,7 +181,7 @@ function ConnectWalletDialog({ onAccountSelect }: ConnectWalletDialogProps) {
     <Flex direction="column" gap="2">
       {connectableWallets.length === 0 ? (
         <Text size="2" color="gray" align="center">
-          No compatible wallets found
+          Please install Phantom, Solflare, or Backpack wallet
         </Text>
       ) : (
         connectableWallets.map((wallet: UiWallet) => (

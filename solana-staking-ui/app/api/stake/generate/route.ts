@@ -144,7 +144,7 @@ function getPhantomStakeMessage({
 }: PhantomStakeMessageParams) {
   const authorityNoopSigner = createNoopSigner(authority);
   const newAccountNoopSigner = createNoopSigner(newAccount);
-  
+
   return pipe(
     createTransactionMessage({ version: 0 }),
     (msg) => setTransactionMessageFeePayer(authority, msg),
@@ -211,8 +211,13 @@ export async function POST(request: Request) {
     console.log("🚀 API /stake/generate called");
     const { stakeLamports, stakerAddress, newAccountAddress, isPhantom } =
       await request.json();
-    
-    console.log("📥 Request data:", { stakeLamports, stakerAddress, newAccountAddress, isPhantom });
+
+    console.log("📥 Request data:", {
+      stakeLamports,
+      stakerAddress,
+      newAccountAddress,
+      isPhantom
+    });
 
     if (!stakeLamports) {
       return NextResponse.json(
@@ -266,8 +271,14 @@ export async function POST(request: Request) {
             sampleMessage
           );
       } catch (estimationError: unknown) {
-        console.error("Failed to estimate compute units for Phantom transaction:", estimationError);
-        const errorMessage = estimationError instanceof Error ? estimationError.message : String(estimationError);
+        console.error(
+          "Failed to estimate compute units for Phantom transaction:",
+          estimationError
+        );
+        const errorMessage =
+          estimationError instanceof Error
+            ? estimationError.message
+            : String(estimationError);
         throw new Error(`Transaction simulation failed: ${errorMessage}`);
       }
 
@@ -300,8 +311,14 @@ export async function POST(request: Request) {
             sampleMessage
           );
       } catch (estimationError: unknown) {
-        console.error("Failed to estimate compute units for standard transaction:", estimationError);
-        const errorMessage = estimationError instanceof Error ? estimationError.message : String(estimationError);
+        console.error(
+          "Failed to estimate compute units for standard transaction:",
+          estimationError
+        );
+        const errorMessage =
+          estimationError instanceof Error
+            ? estimationError.message
+            : String(estimationError);
         throw new Error(`Transaction simulation failed: ${errorMessage}`);
       }
 
@@ -322,7 +339,9 @@ export async function POST(request: Request) {
 
     // Use the message directly without lookup table optimization
     const finalCompiledTransaction = compileTransaction(message);
-    const wireTransaction = getBase64EncodedWireTransaction(finalCompiledTransaction);
+    const wireTransaction = getBase64EncodedWireTransaction(
+      finalCompiledTransaction
+    );
 
     // Calculate transaction size (base64 encoded size approximation)
     const transactionSize = wireTransaction.length * 0.75; // Rough conversion from base64 to bytes

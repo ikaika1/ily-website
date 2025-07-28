@@ -5,8 +5,6 @@ import { address } from "@solana/kit";
 import { getStakeAccounts } from "@/utils/solana/stake/get-stake-accounts";
 
 export const dynamic = "force-dynamic";
-;
-
 /**
  * Get the stake accounts for a wallet address and optionally filtered by vote account
  * @param request - The request object

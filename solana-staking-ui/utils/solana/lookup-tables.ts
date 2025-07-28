@@ -1,14 +1,21 @@
-import { address, type Address, type Rpc, type AddressesByLookupTableAddress } from "@solana/kit";
+import {
+  address,
+  type Address,
+  type Rpc,
+  type AddressesByLookupTableAddress
+} from "@solana/kit";
 import { COMMON_LOOKUP_TABLES } from "@/utils/constants";
 
 /**
  * Create a lookup table for staking transactions to optimize transaction size
  * This includes common addresses used in staking operations
  */
-export function createStakeLookupTableAddresses(validatorAddress: Address): Address[] {
+export function createStakeLookupTableAddresses(
+  validatorAddress: Address
+): Address[] {
   return [
     ...COMMON_LOOKUP_TABLES,
-    validatorAddress, // Validator vote account
+    validatorAddress // Validator vote account
   ];
 }
 
@@ -35,9 +42,11 @@ export async function getStakeLookupTables(
  * Check if transaction size optimization is needed
  * Returns true if transaction is approaching size limits
  */
-export function shouldOptimizeTransactionSize(transactionSize: number): boolean {
+export function shouldOptimizeTransactionSize(
+  transactionSize: number
+): boolean {
   const MAX_TRANSACTION_SIZE = 1232; // Solana transaction size limit
   const OPTIMIZATION_THRESHOLD = 1000; // Start optimizing at 1000 bytes
-  
+
   return transactionSize > OPTIMIZATION_THRESHOLD;
 }
