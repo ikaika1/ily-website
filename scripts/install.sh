@@ -103,15 +103,31 @@ install_pnpm_and_packages() {
         echo "Installing node $NODE_VERSION..."
         pnpm env use $NODE_VERSION --global
 
-        echo "Installing @ily-validator/solc..."
-        pnpm add -g @ily-validator/solc
+        echo "Installing solv CLI (global)..."
+        # Prefer @epics-dao/solv; fallback to @ily-validator/solv if available
+        if ! pnpm add -g @epics-dao/solv; then
+          pnpm add -g @ily-validator/solv || true
+        fi
 
         echo "Sourcing ~/.profile in case it's needed..."
         if [ -f ~/.profile ]; then source ~/.profile; fi
 
-        # Use the full path to solv if it's not found
-        /home/solv/.local/share/pnpm/solv i
-        /home/solv/.local/share/pnpm/solv get aa
+        # Resolve the solv binary path robustly and run example commands
+        SOLV_BIN="$(command -v solv || true)"
+        if [ -z "\$SOLV_BIN" ]; then
+          SOLV_DIR="$(pnpm bin -g 2>/dev/null || echo "$PNPM_HOME")"
+          SOLV_BIN="\${SOLV_DIR}/solv"
+        fi
+        if [ ! -x "\$SOLV_BIN" ]; then
+          echo "Error: 'solv' CLI was not found in PATH or at \"$PNPM_HOME/solv\"." >&2
+          echo "Tried installing @epics-dao/solv (and @ily-validator/solv fallback)." >&2
+          echo "Please verify the correct package name provides 'solv' and re-run:" >&2
+          echo "  pnpm add -g @epics-dao/solv" >&2
+          exit 1
+        fi
+
+        "\$SOLV_BIN" i
+        "\$SOLV_BIN" get aa
 EOF_SOLV
 }
 
@@ -142,4 +158,3 @@ main() {
 main "$@"
 
 } # this ensures the entire script is downloaded
-
