@@ -1,4 +1,4 @@
-#!/bin/bash
+#/bin/bash
 
 # Constants and configurable variables
 NODE_VERSION=20.19.5
@@ -77,7 +77,7 @@ install_rustup() {
     sudo su - solv <<EOF_SOLV
         echo "Installing rustup..."
         curl https://sh.rustup.rs -sSf | sh -s -- -y
-        echo 'export PATH="$HOME/.cargo/env:$PATH"' >> ~/.profile
+        echo 'export PATH="\$HOME/.cargo/env:\$PATH"' >> ~/.profile
         source ~/.cargo/env
         rustup component add rustfmt
         rustup update
@@ -94,8 +94,8 @@ install_pnpm_and_packages() {
         export PNPM_HOME
         PATH="\$PNPM_HOME:\$PATH"
         export PATH
-        echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> ~/.profile
-        echo 'export PATH="$PNPM_HOME:$PATH"' >> ~/.profile
+        echo 'export PNPM_HOME="\$HOME/.local/share/pnpm"' >> ~/.profile
+        echo 'export PATH="\$PNPM_HOME:\$PATH"' >> ~/.profile
 
         echo "Sourcing ~/.bashrc in case it's needed..."
         if [ -f ~/.bashrc ]; then source ~/.bashrc; fi
@@ -103,31 +103,15 @@ install_pnpm_and_packages() {
         echo "Installing node $NODE_VERSION..."
         pnpm env use $NODE_VERSION --global
 
-        echo "Installing solv CLI (global)..."
-        # Prefer @epics-dao/solv; fallback to @ily-validator/solv if available
-        if ! pnpm add -g @epics-dao/solv; then
-          pnpm add -g @ily-validator/solv || true
-        fi
+        echo "Installing @ily-validator/solc..."
+        pnpm add -g @ily-validator/solc
 
         echo "Sourcing ~/.profile in case it's needed..."
         if [ -f ~/.profile ]; then source ~/.profile; fi
 
-        # Resolve the solv binary path robustly and run example commands
-        SOLV_BIN="$(command -v solv || true)"
-        if [ -z "\$SOLV_BIN" ]; then
-          SOLV_DIR="$(pnpm bin -g 2>/dev/null || echo "$PNPM_HOME")"
-          SOLV_BIN="\${SOLV_DIR}/solv"
-        fi
-        if [ ! -x "\$SOLV_BIN" ]; then
-          echo "Error: 'solv' CLI was not found in PATH or at \"$PNPM_HOME/solv\"." >&2
-          echo "Tried installing @epics-dao/solv (and @ily-validator/solv fallback)." >&2
-          echo "Please verify the correct package name provides 'solv' and re-run:" >&2
-          echo "  pnpm add -g @epics-dao/solv" >&2
-          exit 1
-        fi
-
-        "\$SOLV_BIN" i
-        "\$SOLV_BIN" get aa
+        # Use the full path to solv if it's not found
+        /home/solv/.local/share/pnpm/solc i
+        /home/solv/.local/share/pnpm/solc get aa
 EOF_SOLV
 }
 
